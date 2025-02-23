@@ -1,6 +1,5 @@
 import 'package:do_an_lt/Theme/Colors.dart';
 import 'package:do_an_lt/guess_page.dart';
-import 'package:do_an_lt/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -23,12 +22,6 @@ class _SplashScreenState extends State<SplashScreen>
       });
   }
 
-  @override 
-  void dispose() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
-    overlays: SystemUiOverlay.values);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,15 +41,15 @@ class _SplashScreenState extends State<SplashScreen>
             // Hình ảnh tạ
             Image.asset(
               'assets/icons/workout.png',
-              width: 100,
-              height: 100,
+              width: 150,
+              height: 150,
               ),
             SizedBox(height: 20),            
             // Tên ứng dụng
             Text(
               'GYMCITY',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 40,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -68,7 +61,7 @@ class _SplashScreenState extends State<SplashScreen>
               'YOUR HEALTH\nOUR HAPPINESS',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 35,
                 fontStyle: FontStyle.italic,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
