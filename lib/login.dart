@@ -1,6 +1,10 @@
-import 'package:do_an_lt/theme/colors.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:do_an_lt/guess_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:do_an_lt/theme/colors.dart';
+import 'customer_main.dart'; // Import màn hình khách hàng
+import 'coach_main.dart'; // Import màn hình huấn luyện viên
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,8 +14,68 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool rememberMe = false;
   bool acceptTerms = false;
+
+Future<void> _login() async {
+  String email = _usernameController.text.trim();
+  String password = _passwordController.text.trim();
+
+  if (email.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Vui lòng nhập email và mật khẩu")),
+    );
+    return;
+  }
+
+  try {
+    // Đăng nhập bằng Firebase Authentication
+    UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    // Lấy thông tin người dùng từ Firestore bằng uid
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userCredential.user!.uid)
+        .get();
+
+    if (userDoc.exists) {
+      String role = userDoc['role'];
+
+      if (role == "customer") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => CustomerMainPage()),
+        );
+      } else if (role == "coach") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => CoachMainPage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Vai trò không hợp lệ")),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Người dùng không tồn tại")),
+      );
+    }
+  } on FirebaseAuthException catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Đăng nhập thất bại: ${e.message}")),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Lỗi: $e")),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +87,7 @@ class _LoginPageState extends State<LoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [blue, red], 
+            colors: [blue, red],
           ),
         ),
         child: Padding(
@@ -50,22 +114,23 @@ class _LoginPageState extends State<LoginPage> {
 
               Center(
                 child: Image.asset(
-              'assets/icons/workout.png',
-              width: 200,
-              height: 200,
-              fit: BoxFit.cover,
-              ),
+                  'assets/icons/workout.png',
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.cover,
+                ),
               ),
               SizedBox(height: 30),
 
               TextField(
+                controller: _usernameController,
                 style: TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.3),
                   hintText: "Đăng nhập tài khoản",
-                  hintStyle: TextStyle(color: Colors.white70,fontSize: 20),
-                  prefixIcon: Icon(Icons.email, color: Colors.white,size: 20),
+                  hintStyle: TextStyle(color: Colors.white70, fontSize: 20),
+                  prefixIcon: Icon(Icons.email, color: Colors.white, size: 20),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide.none,
@@ -75,14 +140,15 @@ class _LoginPageState extends State<LoginPage> {
               SizedBox(height: 15),
 
               TextField(
+                controller: _passwordController,
                 style: TextStyle(color: Colors.white),
                 obscureText: true,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.3),
                   hintText: "Mật khẩu",
-                  hintStyle: TextStyle(color: Colors.white70,fontSize: 20),
-                  prefixIcon: Icon(Icons.lock, color: Colors.white,size: 20),
+                  hintStyle: TextStyle(color: Colors.white70, fontSize: 20),
+                  prefixIcon: Icon(Icons.lock, color: Colors.white, size: 20),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide.none,
@@ -113,7 +179,7 @@ class _LoginPageState extends State<LoginPage> {
                     activeColor: Colors.white,
                     checkColor: Colors.red,
                   ),
-                  Text("Ghi nhớ đăng nhập", style: TextStyle(color: Colors.white,fontSize: 18)),
+                  Text("Ghi nhớ đăng nhập", style: TextStyle(color: Colors.white, fontSize: 18)),
                 ],
               ),
               Row(
@@ -128,7 +194,7 @@ class _LoginPageState extends State<LoginPage> {
                     activeColor: Colors.white,
                     checkColor: Colors.red,
                   ),
-                  Text("Chấp nhận điều khoản dịch vụ.", style: TextStyle(color: Colors.white,fontSize: 18)),
+                  Text("Chấp nhận điều khoản dịch vụ.", style: TextStyle(color: Colors.white, fontSize: 18)),
                 ],
               ),
 
@@ -138,9 +204,7 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Xử lý đăng nhập tại đây
-                  },
+                  onPressed: _login, // Gọi hàm đăng nhập
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
@@ -180,4 +244,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-
