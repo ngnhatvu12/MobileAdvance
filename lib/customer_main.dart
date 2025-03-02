@@ -1,6 +1,8 @@
 import 'package:do_an_lt/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'customer_pt.dart';
+import 'customer_workout.dart';
+import 'customer_nutrition.dart';
 class CustomerMainPage extends StatefulWidget {
   const CustomerMainPage({super.key});
 
@@ -334,35 +336,6 @@ class _HomePageState extends State<HomePage> {
             );
           }).toList(),
         ),
-      ),
-    );
-  }
-}
-
-
-
-
-class WorkoutPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        "Trang Tập luyện",
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-}
-
-class NutritionPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        "Trang Dinh dưỡng",
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
       ),
     );
   }
