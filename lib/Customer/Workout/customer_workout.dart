@@ -100,8 +100,11 @@ class _WorkoutPageState extends State<WorkoutPage> {
                     margin: const EdgeInsets.only(bottom: 10),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundImage: NetworkImage(data['imageUrl'] ??
-                            'https://via.placeholder.com/150'),
+                        backgroundImage: NetworkImage(
+                          data['imageUrl'] != null && data['imageUrl'].isNotEmpty
+                              ? data['imageUrl']
+                              : 'https://via.placeholder.com/150', 
+                        ),
                       ),
                       title: Text(data['name'] ?? 'Không có tên'),
                       trailing: const Icon(Icons.more_vert),

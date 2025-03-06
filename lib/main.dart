@@ -1,5 +1,5 @@
 import 'package:do_an_lt/coach_main.dart';
-import 'package:do_an_lt/customer_main.dart';
+import 'package:do_an_lt/Customer/Home/customer_main.dart';
 import 'package:do_an_lt/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:do_an_lt/login.dart';

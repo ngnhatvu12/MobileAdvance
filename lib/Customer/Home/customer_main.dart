@@ -1,8 +1,8 @@
 import 'package:do_an_lt/theme/colors.dart';
 import 'package:flutter/material.dart';
-import 'customer_pt.dart';
-import 'customer_workout.dart';
-import 'customer_nutrition.dart';
+import '../PT/customer_pt.dart';
+import '../Workout/customer_workout.dart';
+import '../Nutrition/customer_nutrition.dart';
 class CustomerMainPage extends StatefulWidget {
   const CustomerMainPage({super.key});
 

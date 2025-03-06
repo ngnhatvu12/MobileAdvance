@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:do_an_lt/theme/colors.dart';
-import 'customer_main.dart'; // Import màn hình khách hàng
+import 'Customer/Home/customer_main.dart'; // Import màn hình khách hàng
 import 'coach_main.dart'; // Import màn hình huấn luyện viên
 
 class LoginPage extends StatefulWidget {
