@@ -8,11 +8,25 @@ class WorkoutPage extends StatefulWidget {
   _WorkoutPageState createState() => _WorkoutPageState();
 }
 
-class _WorkoutPageState extends State<WorkoutPage> {
+class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStateMixin {
   final String userId = FirebaseAuth.instance.currentUser!.uid;
   String? selectedWorkoutId;
   String? selectedWorkoutName;
   bool useExistingWorkout = false;
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -137,6 +151,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   Widget _buildExercisePage(String workoutId, String workoutName) {
     return Column(
       children: [
+        // Nút trở về, tên bài tập và nút thùng rác
         Row(
           children: [
             IconButton(
@@ -147,115 +162,187 @@ class _WorkoutPageState extends State<WorkoutPage> {
                 });
               },
             ),
-            Text(workoutName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            Expanded(
+              child: Text(
+                workoutName,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _deleteWorkout(workoutId),
+            ),
           ],
         ),
         const SizedBox(height: 10),
+
+        // TabBar để chuyển qua lại giữa "Bài tập" và "Chi tiết"
+        TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Bài tập'),
+            Tab(text: 'Chi tiết'),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Nội dung tương ứng với từng tab
         Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .doc(userId)
-                .collection('workouts')
-                .doc(workoutId)
-                .collection('exercises')
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(
-                    child: Text('Đã xảy ra lỗi: ${snapshot.error}'));
-              }
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Center(child: Text('Không có bài tập nào.'));
-              }
-
-              return ListView.builder(
-                itemCount: snapshot.data!.docs.length,
-                itemBuilder: (context, index) {
-                  final exercise = snapshot.data!.docs[index];
-                  final data = exercise.data() as Map<String, dynamic>;
-
-                  return Card(
-                    margin: EdgeInsets.all(10),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Tên bài tập
-                          Text(
-                            data['name'] ?? 'Không có tên',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          SizedBox(height: 10),
-
-                          // Hiển thị các sets
-                          StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(userId) // Thay bằng userId thực tế
-                                .collection('workouts')
-                                .doc(workoutId)
-                                .collection('exercises')
-                                .doc(exercise.id)
-                                .collection('sets')
-                                .snapshots(),
-                            builder: (context, setSnapshot) {
-                              if (setSnapshot.connectionState == ConnectionState.waiting) {
-                                return Center(child: CircularProgressIndicator());
-                              }
-                              if (setSnapshot.hasError) {
-                                return Center(child: Text('Đã xảy ra lỗi: ${setSnapshot.error}'));
-                              }
-                              if (!setSnapshot.hasData || setSnapshot.data!.docs.isEmpty) {
-                                return Center(child: Text('Không có set nào.'));
-                              }
-
-                              return Column(
-                                children: [
-                                  // Header của bảng
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text('Set', style: TextStyle(fontWeight: FontWeight.bold)),
-                                      Text('Weight', style: TextStyle(fontWeight: FontWeight.bold)),
-                                      Text('Reps', style: TextStyle(fontWeight: FontWeight.bold)),
-                                      Text('Rest', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                  SizedBox(height: 10),
-
-                                  // Hiển thị các set
-                                  ...setSnapshot.data!.docs.map((set) {
-                                    final setData = set.data() as Map<String, dynamic>;
-                                    return Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(setData['setNumber'] ?? ''),
-                                        Text(setData['weight'] ?? ''),
-                                        Text(setData['reps'] ?? ''),
-                                        Text(setData['rest'] ?? ''),
-                                      ],
-                                    );
-                                  }).toList(),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildExercisesTab(workoutId),
+              _buildDetailsTab(workoutId),
+            ],
           ),
         ),
       ],
     );
+  }
+  Widget _buildExercisesTab(String workoutId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('workouts')
+          .doc(workoutId)
+          .collection('exercises')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Đã xảy ra lỗi: ${snapshot.error}'));
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              
+              const SizedBox(height: 20),
+              const Text('Không có bài tập nào'),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  // Xử lý thêm bài tập
+                },
+                child: const Text('Thêm bài tập'),
+              ),
+            ],
+          );
+        }
+
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final exercise = snapshot.data!.docs[index];
+            final data = exercise.data() as Map<String, dynamic>;
+
+            return Card(
+              margin: EdgeInsets.all(10),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Tên bài tập
+                    Text(
+                      data['name'] ?? 'Không có tên',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 10),
+
+                    // Hiển thị các sets
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(userId)
+                          .collection('workouts')
+                          .doc(workoutId)
+                          .collection('exercises')
+                          .doc(exercise.id)
+                          .collection('sets')
+                          .snapshots(),
+                      builder: (context, setSnapshot) {
+                        if (setSnapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+                        if (setSnapshot.hasError) {
+                          return Center(child: Text('Đã xảy ra lỗi: ${setSnapshot.error}'));
+                        }
+                        if (!setSnapshot.hasData || setSnapshot.data!.docs.isEmpty) {
+                          return Center(child: Text('Không có set nào.'));
+                        }
+
+                        return Column(
+                          children: [
+                            // Header của bảng
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Set', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text('Weight', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text('Reps', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text('Rest', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            SizedBox(height: 10),
+
+                            // Hiển thị các set
+                            ...setSnapshot.data!.docs.map((set) {
+                              final setData = set.data() as Map<String, dynamic>;
+                              return Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(setData['setNumber'] ?? ''),
+                                  Text(setData['weight'] ?? ''),
+                                  Text(setData['reps'] ?? ''),
+                                  Text(setData['rest'] ?? ''),
+                                ],
+                              );
+                            }).toList(),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailsTab(String workoutId) {
+    return Center(
+      child: Text('Chi tiết bài tập'),
+    );
+  }
+  void _deleteWorkout(String workoutId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('workouts')
+          .doc(workoutId)
+          .delete();
+
+      setState(() {
+        selectedWorkoutId = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bài tập đã được xóa thành công!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi khi xóa bài tập: $e')),
+      );
+    }
   }
   void _showCreateWorkoutDialog() {
     final TextEditingController _nameController = TextEditingController();

@@ -28,18 +28,6 @@ class _PTPageState extends State<PTPage> {
             Stack(
               children: [
                 _buildScrollableTopBar(),
-                Positioned(
-                  right: 20,
-                  top: 0,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: CircleAvatar(
-                      backgroundColor: Colors.blue.shade300,
-                      radius: 25,
-                      child: const Text('NV', style: TextStyle(color: Colors.white, fontSize: 18)),
-                    ),
-                  ),
-                ),
               ],
             ),
             Expanded(
