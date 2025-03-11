@@ -1,4 +1,5 @@
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'package:do_an_lt/Customer/Home/class_manager.dart';
 import 'package:do_an_lt/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,7 @@ class CustomerMainPage extends StatefulWidget {
 class _CustomerMainPageState extends State<CustomerMainPage> {
   int _selectedIndex = 0; // Chỉ số của trang hiện tại
   String _avatarText = '';
+  
   // Danh sách các trang tương ứng với các nút trong Navigation Bar
   final List<Widget> _pages = [
     HomePage(), // Trang chủ
@@ -106,8 +108,25 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   String _avatarText = '';
+  String _searchQuery = '';
+  bool _sortByNewest = false;
   final List<String> _tabs = ['Hôm nay', 'Hoạt động', 'Tin tức'];
+  void _onSearch(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+  }
 
+  void _onSortByNewest() {
+    setState(() {
+      _sortByNewest = !_sortByNewest;
+    });
+  }
+   void _onViewAllNewsPressed() {
+    setState(() {
+      _selectedIndex = 2; // Chuyển sang tab Tin tức
+    });
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -190,10 +209,41 @@ class _HomePageState extends State<HomePage> {
               crossAxisSpacing: 20,
               childAspectRatio: 2.5,
               children: [
-                _buildButton('Đăng ký huấn luyện viên', Icons.sports_gymnastics, Alignment.bottomRight),
-                _buildButton('Bắt đầu tập luyện', Icons.local_fire_department, Alignment.bottomLeft),
-                _buildButton('Đăng ký khóa học', Icons.school, Alignment.topRight),
-                _buildButton('Lịch tập của tôi', Icons.calendar_today, Alignment.topLeft),
+                _buildButton(
+                  'Đăng ký huấn luyện viên',
+                  Icons.sports_gymnastics,
+                  Alignment.bottomRight,
+                  () {
+                    // Xử lý cho nút Đăng ký huấn luyện viên
+                  },
+                ),
+                _buildButton(
+                  'Bắt đầu tập luyện',
+                  Icons.local_fire_department,
+                  Alignment.bottomLeft,
+                  () {
+                    // Xử lý cho nút Bắt đầu tập luyện
+                  },
+                ),
+                _buildButton(
+                  'Đăng ký khóa học',
+                  Icons.school,
+                  Alignment.topRight,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ClassManager()),
+                    );
+                  },
+                ),
+                _buildButton(
+                  'Lịch tập của tôi',
+                  Icons.calendar_today,
+                  Alignment.topLeft,
+                  () {
+                    // Xử lý cho nút Lịch tập của tôi
+                  },
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -241,10 +291,7 @@ class _HomePageState extends State<HomePage> {
                 const Text('Tin tức',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 GestureDetector(
-                  onTap: () {
-                    // Hành động khi nhấn "Xem tất cả"
-                    print('Xem tất cả tin tức');
-                  },
+                  onTap: _onViewAllNewsPressed,
                   child: const Text('Xem tất cả',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 ),
@@ -349,10 +396,7 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             GestureDetector(
-              onTap: () {
-                // Hành động khi nhấn "Xem tất cả"
-                print('Xem tất cả');
-              },
+              onTap: () {},
               child: const Text(
                 'Xem tất cả',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -495,58 +539,136 @@ class _HomePageState extends State<HomePage> {
           ),
         );
       case 2: // Tin tức
-      return Column(
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
+            // Thanh tìm kiếm và nút lọc
+            Padding(
               padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(10),
-              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Khách hàng tuân thủ',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const Icon(Icons.arrow_forward_ios),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatusCircle('0', 'Thấp', Colors.red),
-                _buildStatusCircle('0', 'Trung bình', Colors.orange),
-                _buildStatusCircle('0', 'Cao', Colors.green),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.calendar_today, color: Colors.grey),
-                      SizedBox(width: 10),
-                      Text('Chương trình kết thúc',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    ],
+                  Expanded(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Tìm kiếm tin tức...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onChanged: _onSearch,
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  const Center(
-                    child: Text('Không có chương trình kết thúc sớm',
-                        style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  const SizedBox(width: 10),
+                  IconButton(
+                    icon: const Icon(Icons.filter_list),
+                    onPressed: _onSortByNewest,
                   ),
                 ],
               ),
+            ),
+            // Danh sách tin tức
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('news').snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('Không có tin tức nào.'));
+                }
+
+                var news = snapshot.data!.docs;
+
+                // Lọc theo tìm kiếm
+                if (_searchQuery.isNotEmpty) {
+                  news = news.where((doc) {
+                    final name = doc['name']?.toString().toLowerCase() ?? '';
+                    return name.contains(_searchQuery.toLowerCase());
+                  }).toList();
+                }
+
+                // Sắp xếp theo ngày mới nhất
+                if (_sortByNewest) {
+                  news.sort((a, b) {
+                    final dateA = _parseDate(a['date'] ?? '');
+                    final dateB = _parseDate(b['date'] ?? '');
+                    return dateB.compareTo(dateA);
+                  });
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: news.length,
+                  itemBuilder: (context, index) {
+                    final doc = news[index];
+                    final title = doc['name'] ?? 'Không có tiêu đề';
+                    final imageUrl = doc['imageUrl'] ?? '';
+                    final date = doc['date'] ?? '';
+
+                    return Container(
+                      margin: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 5,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(10),
+                              topRight: Radius.circular(10),
+                            ),
+                            child: Image.network(
+                              imageUrl,
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                height: 150,
+                                color: Colors.grey,
+                                child: const Center(child: Icon(Icons.error)),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10, bottom: 10),
+                            child: Text(
+                              date,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ],
         );
@@ -554,37 +676,46 @@ class _HomePageState extends State<HomePage> {
         return Container();
     }
   }
-
-  Widget _buildButton(String text, IconData icon, Alignment alignment) {
+  DateTime _parseDate(String date) {
+    final parts = date.split('/');
+    if (parts.length == 3) {
+      return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+    }
+    return DateTime.now();
+  }
+  Widget _buildButton(String text, IconData icon, Alignment alignment, VoidCallback onTap) {
     bool isLeft = alignment == Alignment.bottomLeft || alignment == Alignment.topLeft;
 
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 8,
-            offset: Offset(2, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: isLeft ? MainAxisAlignment.spaceBetween : MainAxisAlignment.start,
-        children: [
-          if (isLeft) Icon(icon, color: Colors.blue.shade300),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              softWrap: true,
+    return GestureDetector(
+      onTap: onTap, // Thêm xử lý khi nhấn
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 8,
+              offset: Offset(2, 2),
             ),
-          ),
-          if (!isLeft) Icon(icon, color: Colors.blue.shade300),
-        ],
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: isLeft ? MainAxisAlignment.spaceBetween : MainAxisAlignment.start,
+          children: [
+            if (isLeft) Icon(icon, color: Colors.blue.shade300),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                softWrap: true,
+              ),
+            ),
+            if (!isLeft) Icon(icon, color: Colors.blue.shade300),
+          ],
+        ),
       ),
     );
   }
