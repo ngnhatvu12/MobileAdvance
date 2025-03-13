@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:do_an_lt/Customer/Home/class_manager.dart';
+import 'package:do_an_lt/Widget/schedule_item.dart';
 import 'package:do_an_lt/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -110,13 +113,13 @@ class _HomePageState extends State<HomePage> {
   String _avatarText = '';
   String _searchQuery = '';
   bool _sortByNewest = false;
+  String _twoDigits(int n) => n.toString().padLeft(2, '0');
   final List<String> _tabs = ['Hôm nay', 'Hoạt động', 'Tin tức'];
   void _onSearch(String query) {
     setState(() {
       _searchQuery = query;
     });
   }
-
   void _onSortByNewest() {
     setState(() {
       _sortByNewest = !_sortByNewest;
@@ -127,6 +130,45 @@ class _HomePageState extends State<HomePage> {
       _selectedIndex = 2; // Chuyển sang tab Tin tức
     });
   }
+  Widget _buildRealTimeClock() {
+  return StreamBuilder(
+    stream: Stream.periodic(const Duration(seconds: 1)),
+    builder: (context, snapshot) {
+      final now = DateTime.now();
+      final formattedTime = '${_getWeekday(now.weekday)}, ${now.day}/${now.month}/${now.year} '
+          '${now.hour}:${_twoDigits(now.minute)}:${_twoDigits(now.second)}';
+      return Text(
+        formattedTime,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.black,
+        ),
+      );
+    },
+  );
+}
+
+String _getWeekday(int weekday) {
+  switch (weekday) {
+    case 1:
+      return 'Thứ Hai';
+    case 2:
+      return 'Thứ Ba';
+    case 3:
+      return 'Thứ Tư';
+    case 4:
+      return 'Thứ Năm';
+    case 5:
+      return 'Thứ Sáu';
+    case 6:
+      return 'Thứ Bảy';
+    case 7:
+      return 'Chủ Nhật';
+    default:
+      return '';
+  }
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -202,6 +244,8 @@ class _HomePageState extends State<HomePage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+             _buildRealTimeClock(), // Chèn đồng hồ thời gian thực
+            const SizedBox(height: 20),
             GridView.count(
               shrinkWrap: true,
               crossAxisCount: 2,
@@ -269,20 +313,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Lịch tập hôm nay',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                GestureDetector(
-                  onTap: () {},
-                  child: const Icon(Icons.arrow_forward_ios),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            const Text('Hôm nay bạn không có sự kiện nào.',
-                style: TextStyle(color: Colors.grey)),
+            ScheduleWidget(),
             const SizedBox(height: 30),
             // Tin tức 
             Row(

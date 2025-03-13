@@ -1,8 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:do_an_lt/Widget/course_item.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'customer_main.dart'; // Import trang chủ
 
 class ClassManager extends StatefulWidget {
-  const ClassManager({Key? key}) : super(key: key);
+  final int initialTabIndex;
+  const ClassManager({Key? key, this.initialTabIndex = 0}) : super(key: key);
 
   @override
   _ClassManagerState createState() => _ClassManagerState();
@@ -16,6 +20,7 @@ class _ClassManagerState extends State<ClassManager>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.index = widget.initialTabIndex;
   }
 
   @override
@@ -63,11 +68,12 @@ class _ClassManagerState extends State<ClassManager>
 class RegistrationTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          // Thanh tìm kiếm
           TextField(
             decoration: InputDecoration(
               hintText: 'Tìm kiếm khóa học...',
@@ -78,7 +84,6 @@ class RegistrationTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          // Tiêu đề danh mục
           const Align(
             alignment: Alignment.centerLeft,
             child: Text(
@@ -87,16 +92,44 @@ class RegistrationTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          // Danh sách danh mục
           Expanded(
-            child: ListView(
-              children: [
-                CategoryItem('Công nghệ thông tin'),
-                CategoryItem('Kinh doanh'),
-                CategoryItem('Ngoại ngữ'),
-                CategoryItem('Thiết kế'),
-                // Thêm các danh mục khác nếu cần
-              ],
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('class').snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('Không có khóa học nào.'));
+                }
+                final courses = snapshot.data!.docs.where((course) =>
+                    !course['members'].contains(user?.uid)).toList();
+
+                if (courses.isEmpty) {
+                  return const Center(child: Text('Không có khóa học nào để đăng ký.'));
+                }
+
+                return ListView.builder(
+                  itemCount: courses.length,
+                  itemBuilder: (context, index) {
+                    final course = courses[index];
+                    return CourseItem(
+                      classId: course['classId'],
+                      imageUrl: course['imageUrl'],
+                      name: course['name'],
+                      description: course['description'],
+                      location: course['location'],
+                      time: course['time'],
+                      members: course['members'],
+                      price: course['price'],
+                      goals: course['goals'],
+                      benefits: course['benefits'],
+                      requirements: course['requirements'],
+                      isRegistered: false,
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
@@ -130,14 +163,59 @@ class CategoryItem extends StatelessWidget {
 class MyCoursesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Danh sách khóa học đã đăng ký sẽ hiển thị ở đây',
-        style: TextStyle(fontSize: 16),
-      ),
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return const Center(
+        child: Text(
+          'Bạn cần đăng nhập để xem khóa học của mình.',
+          style: TextStyle(fontSize: 16),
+        ),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('class')
+          .where('members', arrayContains: user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Text('Bạn chưa đăng ký khóa học nào.'),
+          );
+        }
+
+        final courses = snapshot.data!.docs;
+
+        return ListView.builder(
+          itemCount: courses.length,
+          itemBuilder: (context, index) {
+            final course = courses[index];
+            return CourseItem(
+              classId: course['classId'],
+              imageUrl: course['imageUrl'],
+              name: course['name'],
+              description: course['description'],
+              location: course['location'],
+              time: course['time'],
+              members: course['members'],
+              price: course['price'],
+              goals: course['goals'],
+              benefits: course['benefits'],
+              requirements: course['requirements'],
+              isRegistered: true,
+            );
+          },
+        );
+      },
     );
   }
 }
+
 
 void main() {
   runApp(const MaterialApp(
