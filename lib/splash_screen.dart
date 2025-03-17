@@ -41,8 +41,8 @@ class _SplashScreenState extends State<SplashScreen>
             // Hình ảnh tạ
             Image.asset(
               'assets/icons/workout.png',
-              width: 150,
-              height: 150,
+              width: 300,
+              height: 300,
               ),
             SizedBox(height: 20),            
             // Tên ứng dụng

@@ -8,6 +8,8 @@ class NutritionPage extends StatefulWidget {
 }
 
 class _NutritionPageState extends State<NutritionPage> with SingleTickerProviderStateMixin {
+  int _selectedIndex = 0; // Mặc định vào tab đầu tiên
+  final List<String> _tabs = ['Kế hoạch', 'Món ăn', 'Cộng đồng'];
   late TabController _tabController;
   final String userId = FirebaseAuth.instance.currentUser!.uid;
   bool isCreatingPlan = false;
@@ -51,59 +53,87 @@ class _NutritionPageState extends State<NutritionPage> with SingleTickerProvider
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: isCreatingPlan ? _buildCreatePlanPage() : (isViewingPlan ? _buildPlanDetailPage() : _buildMainPage()),
-    );
-  }
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: isCreatingPlan ? _buildCreatePlanPage() : (isViewingPlan ? _buildPlanDetailPage() : _buildMainPage()),
+  );
+}
 
-  Widget _buildMainPage() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [blue, Colors.black],
-        ),
+Widget _buildMainPage() {
+  return Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [blue, Colors.black],
       ),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 200.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
+    ),
+    child: Column(
+      children: [
+        const SizedBox(height: 50),
+        _buildScrollableTopBar(),
+        Expanded(
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+            ),
+            margin: const EdgeInsets.only(top: 30),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: _buildTabContent(),
             ),
           ),
-          child: Column(
-            children: [
-              TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                labelStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                tabs: [
-                  Tab(text: 'Kế hoạch'),
-                  Tab(text: 'Món ăn'),
-                  Tab(text: 'Cộng đồng'),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildPlanTab(),
-                    _buildMealTab(),
-                    _buildCommunityTab(),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
-      ),
-    );
+      ],
+    ),
+  );
+}
+
+Widget _buildScrollableTopBar() {
+  return SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: _tabs.map((tab) {
+        final isSelected = _tabs.indexOf(tab) == _selectedIndex;
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedIndex = _tabs.indexOf(tab);
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              tab,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey,
+                fontWeight: FontWeight.bold,
+                fontSize: 35,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    ),
+  );
+}
+
+Widget _buildTabContent() {
+  switch (_selectedIndex) {
+    case 0:
+      return _buildPlanTab();
+    case 1:
+      return _buildMealTab();
+    case 2:
+      return _buildCommunityTab();
+    default:
+      return Center(child: Text('Không có dữ liệu'));
   }
+}
 
   Widget _buildPlanTab() {
     return Column(
@@ -292,92 +322,316 @@ void _showAddMealDialog(String mealType) {
   }
 
   Widget _buildEmptyMealTab() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('foods')
-          .doc(userId)
-          .collection('userFoods')
-          .orderBy('createdAt', descending: true)
-          .limit(20) // Giới hạn số lượng món ăn
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
+  String _searchQuery = ''; // Biến lưu truy vấn tìm kiếm
+  String _selectedCategory = 'Tất cả'; // Biến lưu danh mục được chọn
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Hiện tại chưa có bất kỳ món ăn nào',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('foods')
+        .doc(userId)
+        .collection('userFoods')
+        .orderBy('createdAt', descending: true)
+        .limit(20) // Giới hạn số lượng món ăn
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return Center(child: CircularProgressIndicator());
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Hiện tại chưa có bất kỳ món ăn nào',
+                style: TextStyle(fontSize: 18, color: Colors.grey),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _isCreatingMeal = true;
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                 ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _isCreatingMeal = true;
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                child: Text(
+                  'Tạo món ăn',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      final meals = snapshot.data!.docs;
+      final filteredMeals = meals.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        final name = data['name'].toString().toLowerCase();
+        final type = data['type'] ?? '';
+
+        // Kiểm tra danh mục
+        final matchesCategory = _selectedCategory == 'Tất cả' || type == _selectedCategory;
+
+        // Kiểm tra tìm kiếm
+        final matchesSearch = name.contains(_searchQuery.toLowerCase());
+
+        return matchesCategory && matchesSearch;
+      }).toList();
+
+      return Column(
+        children: [
+          // Thanh tìm kiếm và nút lọc
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Tìm kiếm món ăn...',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
                   ),
-                  child: Text(
-                    'Tạo món ăn',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
+                ),
+                SizedBox(width: 10),
+                IconButton(
+                  icon: Icon(Icons.filter_list),
+                  onPressed: () {
+                  },
                 ),
               ],
             ),
-          );
-        }
-
-        final meals = snapshot.data!.docs;
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: meals.length,
-          itemBuilder: (context, index) {
-            final meal = meals[index].data() as Map<String, dynamic>;
-            return _buildMealItem(meal, meals[index].id);
-          },
-        );
-      },
-    );
-  }
+          ),
+          // Danh mục
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: ['Tất cả', 'Bữa sáng', 'Bữa trưa', 'Bữa tối', 'Bữa phụ'].map((category) {
+                final isSelected = category == _selectedCategory;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedCategory = category;
+                    });
+                  },
+                  child: Container(
+                    margin: EdgeInsets.only(right: 10),
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.blueAccent : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      category,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          SizedBox(height: 10),
+          // Danh sách món ăn
+          Expanded(
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: filteredMeals.length,
+              itemBuilder: (context, index) {
+                final meal = filteredMeals[index].data() as Map<String, dynamic>;
+                return _buildMealItem(meal, filteredMeals[index].id);
+              },
+            ),
+          ),
+          // Nút "Tạo món ăn" cố định ở bên dưới
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _isCreatingMeal = true;
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                minimumSize: Size(double.infinity, 50), // Chiều rộng tối đa
+              ),
+              child: Text(
+                'Tạo món ăn',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
    
   Widget _buildMealItem(Map<String, dynamic> meal, String mealId) {
-    return Card(
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: ListTile(
-        title: Text(meal['name'] ?? 'Không có tên'),
-        subtitle: Text(
-          '${meal['grams']}g - ${meal['calories']} kcal',
-          style: TextStyle(color: Colors.grey),
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            _handleMealAction(value, mealId, meal);
-          },
-          itemBuilder: (BuildContext context) {
-            return {'Chỉnh sửa', 'Xóa'}.map((String choice) {
-              return PopupMenuItem<String>(
-                value: choice,
-                child: Text(choice),
-              );
-            }).toList();
-          },
-        ),
+  return Card(
+    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Hàng đầu tiên: Ảnh và tên món ăn
+          Row(
+            children: [
+              // Ảnh món ăn
+              if (meal['imageUrl'] != null && meal['imageUrl'].isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    meal['imageUrl'],
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              SizedBox(width: 20),
+              // Tên món ăn
+              Expanded(
+                child: Text(
+                  meal['name'] ?? 'Không có tên',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              // Nút 3 chấm
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  _handleMealAction(value, mealId, meal);
+                },
+                itemBuilder: (BuildContext context) {
+                  return {'Chỉnh sửa', 'Xóa'}.map((String choice) {
+                    return PopupMenuItem<String>(
+                      value: choice,
+                      child: Text(choice),
+                    );
+                  }).toList();
+                },
+              ),
+            ],
+          ),
+          SizedBox(height: 10),
+          // Text "Thông tin món ăn"
+          Text(
+            'Thông tin món ăn',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 5),
+          // Bảng thông tin dinh dưỡng
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: EdgeInsets.all(10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                // Carbs
+                Column(
+                  children: [
+                    Text(
+                      'Carbs',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    Text(
+                      '${meal['carbs']}g',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                // Fat
+                Column(
+                  children: [
+                    Text(
+                      'Fat',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    Text(
+                      '${meal['fat']}g',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                // Protein
+                Column(
+                  children: [
+                    Text(
+                      'Protein',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    Text(
+                      '${meal['protein']}g',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                Column(
+                  children: [
+                    Text(
+                      'Grams',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    Text(
+                      '${meal['grams']}g',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                Column(
+                  children: [
+                    Text(
+                      'Calories',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    Text(
+                      '${meal['calories']} kcal',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          )         
+        ],
       ),
-    );
-  }
-
+    ),
+  );
+}
   void _handleMealAction(String action, String mealId, Map<String, dynamic> meal) {
     if (action == 'Chỉnh sửa') {
       _editMeal(mealId, meal);

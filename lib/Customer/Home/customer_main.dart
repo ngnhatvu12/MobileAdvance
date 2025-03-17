@@ -1,7 +1,7 @@
 import 'dart:async';
-
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:do_an_lt/Customer/Home/class_manager.dart';
+import 'package:do_an_lt/Customer/Menu/customer_menu.dart';
 import 'package:do_an_lt/Widget/schedule_item.dart';
 import 'package:do_an_lt/theme/colors.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +12,7 @@ import '../Nutrition/customer_nutrition.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 class CustomerMainPage extends StatefulWidget {
+  
   const CustomerMainPage({super.key});
 
   @override
@@ -22,14 +23,19 @@ class _CustomerMainPageState extends State<CustomerMainPage> {
   int _selectedIndex = 0; // Chỉ số của trang hiện tại
   String _avatarText = '';
   
-  // Danh sách các trang tương ứng với các nút trong Navigation Bar
-  final List<Widget> _pages = [
-    HomePage(), // Trang chủ
-    PTPage(),    // Trang PT
-    WorkoutPage(), // Trang Tập luyện
-    NutritionPage(), // Trang Dinh dưỡng
-    MenuPage(),  // Trang Menu
-  ];
+  List<Widget> get _pages => [
+        HomePage(
+          onIndexChanged: (index) {
+            setState(() {
+              _selectedIndex = index; // Cập nhật state ở đây
+            });
+          },
+        ), // Trang chủ
+        PTPage(),    // Trang PT
+        WorkoutPage(), // Trang Tập luyện
+        NutritionPage(), // Trang Dinh dưỡng
+        MenuPage(),  // Trang Menu
+      ];
   
   @override
   void initState() {
@@ -104,6 +110,10 @@ Widget build(BuildContext context) {
 
 
 class HomePage extends StatefulWidget {
+  final Function(int) onIndexChanged; // Callback để thay đổi index
+
+  const HomePage({Key? key, required this.onIndexChanged}) : super(key: key);
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -258,7 +268,7 @@ String _getWeekday(int weekday) {
                   Icons.sports_gymnastics,
                   Alignment.bottomRight,
                   () {
-                    // Xử lý cho nút Đăng ký huấn luyện viên
+                    widget.onIndexChanged(1);
                   },
                 ),
                 _buildButton(
@@ -266,7 +276,7 @@ String _getWeekday(int weekday) {
                   Icons.local_fire_department,
                   Alignment.bottomLeft,
                   () {
-                    // Xử lý cho nút Bắt đầu tập luyện
+                    widget.onIndexChanged(2);
                   },
                 ),
                 _buildButton(
@@ -796,18 +806,7 @@ String _getWeekday(int weekday) {
   }
 }
 
-class MenuPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        "Trang Menu",
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-}
+
 class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

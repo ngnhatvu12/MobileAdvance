@@ -1,3 +1,4 @@
+import 'package:do_an_lt/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -31,28 +32,53 @@ class _GuessPageState extends State<GuessPage> {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: double.infinity,
-                  height: 200,
-                  padding: EdgeInsets.only(top: 100, bottom: 40),
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage("assets/images/gif_1.gif"), 
-                      fit: BoxFit.cover, 
-                    ),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
+  width: double.infinity,
+  height: 200,
+  decoration: BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.bottomLeft,
+      end: Alignment.topRight,
+      colors: [blue, red],
+    ),
+    borderRadius: BorderRadius.only(
+      bottomLeft: Radius.circular(20),
+      bottomRight: Radius.circular(20),
+    ),
+  ),
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Image.asset(
+                    'assets/icons/workout.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        "Kính chào quý khách hàng !",
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
+      SizedBox(width: 10), // Khoảng cách nhỏ giữa icon và chữ
+      Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "FitnessApp",
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            "Kính chào quý khách",
+            style: TextStyle(
+              fontSize: 20,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    ],
+  ),
+),
                   
                 // 🔥 Nút đăng nhập & đăng ký (to hơn, nằm giữa)
             Positioned(
@@ -81,9 +107,9 @@ class _GuessPageState extends State<GuessPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.login, color: Colors.red, size: 40),
+                  Icon(Icons.login, color: blue, size: 40),
                   SizedBox(height: 5),
-                  Text("Đăng nhập", style: TextStyle(color: Colors.red, fontSize: 16)),
+                  Text("Đăng nhập", style: TextStyle(color: Colors.black, fontSize: 16)),
                 ],
               ),
             ),
@@ -112,7 +138,7 @@ class _GuessPageState extends State<GuessPage> {
                 children: [
                   Icon(Icons.edit, color: Colors.red, size: 40),
                   SizedBox(height: 5),
-                  Text("Đăng ký", style: TextStyle(color: Colors.red, fontSize: 16)),
+                  Text("Đăng ký", style: TextStyle(color: Colors.black, fontSize: 16)),
                 ],
               ),
             ),
@@ -173,7 +199,7 @@ class _GuessPageState extends State<GuessPage> {
               autoPlay: true,
               height: 200,
               autoPlayCurve: Curves.fastOutSlowIn,
-              autoPlayAnimationDuration: const Duration(milliseconds: 2),
+              autoPlayAnimationDuration: const Duration(milliseconds: 600),
               autoPlayInterval: const Duration(seconds: 2),
               enlargeCenterPage: true,
               aspectRatio: 2.0,
