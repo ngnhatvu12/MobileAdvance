@@ -1,8 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:do_an_lt/Widget/course_item.dart';
+import 'package:do_an_lt/theme/colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'customer_main.dart'; // Import trang chủ
+import 'customer_main.dart';
 
 class ClassManager extends StatefulWidget {
   final int initialTabIndex;
@@ -32,68 +33,178 @@ class _ClassManagerState extends State<ClassManager>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const CustomerMainPage()),
-            );
-          },
-        ),
-        title: const Text('Quản lý khóa học'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Đăng ký'),
-            Tab(text: 'Khóa học của tôi'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
+      backgroundColor: Colors.white,
+      body: Column(
         children: [
-          // Tab Đăng ký
-          RegistrationTab(),
-          // Tab Khóa học của tôi
-          MyCoursesTab(),
+          // Phần header với gradient
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [blue, const Color.fromARGB(255, 1, 3, 113)],
+              ),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Phần header với nút back và tiêu đề
+                Padding(
+                  padding: const EdgeInsets.only(
+                      top: 10, left: 16, right: 16, bottom: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const CustomerMainPage()),
+                          );
+                        },
+                      ),
+                      const Expanded(
+                        child: Center(
+                          child: Text(
+                            'Quản lý khóa học',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+                
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Row(
+                    children: [
+                      // Tab Đăng ký
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _tabController.animateTo(0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: _tabController.index == 0 
+                                    ? Colors.white 
+                                    : Colors.transparent,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Đăng ký',
+                                style: TextStyle(
+                                  color: _tabController.index == 0 
+                                    ? Colors.white 
+                                    : Colors.white.withOpacity(0.6),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      // Tab Khóa học của tôi
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _tabController.animateTo(1),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: _tabController.index == 1 
+                                    ? Colors.white 
+                                    : Colors.transparent,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Khóa học của tôi',
+                                style: TextStyle(
+                                  color: _tabController.index == 1 
+                                    ? Colors.white 
+                                    : Colors.white.withOpacity(0.6),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab Đăng ký
+                RegistrationTab(),
+                // Tab Khóa học của tôi
+                MyCoursesTab(),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
-
-// Widget cho tab Đăng ký
 class RegistrationTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Tìm kiếm khóa học...',
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Tìm kiếm khóa học...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                filled: true,
+                fillColor: Colors.grey[200],
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Danh mục',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            const SizedBox(height: 20),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Danh mục',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
+            const SizedBox(height: 10),
+            StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('class').snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -110,6 +221,8 @@ class RegistrationTab extends StatelessWidget {
                 }
 
                 return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   itemCount: courses.length,
                   itemBuilder: (context, index) {
                     final course = courses[index];
@@ -131,35 +244,13 @@ class RegistrationTab extends StatelessWidget {
                 );
               },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// Widget cho mỗi mục danh mục
-class CategoryItem extends StatelessWidget {
-  final String categoryName;
-
-  const CategoryItem(this.categoryName);
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      child: ListTile(
-        title: Text(categoryName),
-        trailing: const Icon(Icons.arrow_forward_ios),
-        onTap: () {
-          // Xử lý khi nhấn vào danh mục
-        },
-      ),
-    );
-  }
-}
-
-// Widget cho tab Khóa học của tôi
 class MyCoursesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -169,8 +260,7 @@ class MyCoursesTab extends StatelessWidget {
       return const Center(
         child: Text(
           'Bạn cần đăng nhập để xem khóa học của mình.',
-          style: TextStyle(fontSize: 16),
-        ),
+          style: TextStyle(fontSize: 16)),
       );
     }
 
@@ -192,6 +282,7 @@ class MyCoursesTab extends StatelessWidget {
         final courses = snapshot.data!.docs;
 
         return ListView.builder(
+          padding: const EdgeInsets.all(16),
           itemCount: courses.length,
           itemBuilder: (context, index) {
             final course = courses[index];
@@ -215,7 +306,6 @@ class MyCoursesTab extends StatelessWidget {
     );
   }
 }
-
 
 void main() {
   runApp(const MaterialApp(

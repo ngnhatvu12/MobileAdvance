@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:do_an_lt/Customer/Home/class_manager.dart';
+import 'package:do_an_lt/Customer/Home/news_detail.dart';
+import 'package:do_an_lt/Customer/Home/schedule.dart';
 import 'package:do_an_lt/Customer/Menu/customer_menu.dart';
 import 'package:do_an_lt/Widget/schedule_item.dart';
 import 'package:do_an_lt/theme/colors.dart';
@@ -295,7 +297,10 @@ String _getWeekday(int weekday) {
                   Icons.calendar_today,
                   Alignment.topLeft,
                   () {
-                    // Xử lý cho nút Lịch tập của tôi
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const MyTrainingSchedulePage()),
+                    );
                   },
                 ),
               ],
@@ -357,72 +362,90 @@ String _getWeekday(int weekday) {
                     scrollDirection: Axis.horizontal,
                     itemCount: news.length,
                     itemBuilder: (context, index) {
-                      final doc = news[index];
-                      final title = doc['name'] ?? 'Không có tiêu đề';
-                      final imageUrl = doc['imageUrl'] ?? '';
-                      final date = doc['date'] ?? '';
+  final doc = news[index];
+  final title = doc['name'] ?? 'Không có tiêu đề';
+  final imageUrl = doc['imageUrl'] ?? '';
+  final date = doc['date'] ?? '';
 
-                      return Container(
-                        width: 250,
-                        margin: const EdgeInsets.only(right: 15),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 5,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                          color: Colors.white,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(15),
-                                topRight: Radius.circular(15),
-                              ),
-                              child: Image.network(
-                                imageUrl,
-                                height: 120,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Container(
-                                  height: 150,
-                                  color: Colors.grey,
-                                  child: const Center(child: Icon(Icons.error)),
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Text(
-                                title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(left: 10, bottom: 10),
-                              child: Text(
-                                date,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NewsDetailPage(
+            newsItem: {
+              'id': doc.id,
+              'name': title,
+              'imageUrl': imageUrl,
+              'date': date,
+              'detail': doc['detail'],
+            },
+          ),
+        ),
+      );
+    },
+    child: Container(
+      width: 250,
+      margin: const EdgeInsets.only(right: 15),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+        color: Colors.white,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(15),
+              topRight: Radius.circular(15),
+            ),
+            child: Image.network(
+              imageUrl,
+              height: 120,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  Container(
+                height: 150,
+                color: Colors.grey,
+                child: const Center(child: Icon(Icons.error)),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 10, bottom: 10),
+            child: Text(
+              date,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+},
                   ),
                 );
               },
@@ -648,63 +671,81 @@ String _getWeekday(int weekday) {
                     final imageUrl = doc['imageUrl'] ?? '';
                     final date = doc['date'] ?? '';
 
-                    return Container(
-                      margin: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 5,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(10),
-                              topRight: Radius.circular(10),
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => NewsDetailPage(
+                              newsItem: {
+                                'id': doc.id,
+                                'name': title,
+                                'imageUrl': imageUrl,
+                                'date': date,
+                                'detail': doc['detail'],
+                              },
                             ),
-                            child: Image.network(
-                              imageUrl,
-                              height: 150,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
+                          ),
+                        );
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 5,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(10),
+                                topRight: Radius.circular(10),
+                              ),
+                              child: Image.network(
+                                imageUrl,
                                 height: 150,
-                                color: Colors.grey,
-                                child: const Center(child: Icon(Icons.error)),
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                  height: 150,
+                                  color: Colors.grey,
+                                  child: const Center(child: Icon(Icons.error)),
+                                ),
                               ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Text(
-                              title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Text(
+                                title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 10, bottom: 10),
-                            child: Text(
-                              date,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
+                            Padding(
+                              padding: const EdgeInsets.only(left: 10, bottom: 10),
+                              child: Text(
+                                date,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },

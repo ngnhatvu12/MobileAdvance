@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:do_an_lt/Customer/PT/contact_pt.dart';
 import 'package:do_an_lt/Customer/PT/pt_detail.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -100,82 +101,85 @@ class _PTPageState extends State<PTPage> {
     }
   }
   Widget _buildContactTab() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return const Center(child: Text('Vui lòng đăng nhập để xem liên hệ.'));
-    }
-
-    return Column(
-      children: [
-        _buildContactSearchBar(),
-        const SizedBox(height: 10),
-        _buildContactHeader(),
-        const SizedBox(height: 10),
-        Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .collection('contacts')
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(child: Text('Đã xảy ra lỗi: ${snapshot.error}'));
-              }
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Center(child: Text('Không có liên hệ nào.'));
-              }
-
-              final contacts = snapshot.data!.docs;
-
-              return ListView.builder(
-                itemCount: contacts.length,
-                itemBuilder: (context, index) {
-                  final contact = contacts[index].data() as Map<String, dynamic>;
-                  return FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('coachs')
-                        .doc(contact['coachId'])
-                        .get(),
-                    builder: (context, coachSnapshot) {
-                      if (coachSnapshot.connectionState == ConnectionState.waiting) {
-                        return const ListTile(
-                          title: Text('Đang tải...'),
-                        );
-                      }
-                      if (coachSnapshot.hasError) {
-                        return ListTile(
-                          title: Text('Lỗi: ${coachSnapshot.error}'),
-                        );
-                      }
-                      if (!coachSnapshot.hasData || !coachSnapshot.data!.exists) {
-                        return const ListTile(
-                          title: Text('Huấn luyện viên không tồn tại.'),
-                        );
-                      }
-
-                      final coachData = coachSnapshot.data!.data() as Map<String, dynamic>;
-                      final endDate = DateTime.parse(contact['endDate']);
-                      final daysRemaining = endDate.difference(DateTime.now()).inDays;
-
-                      return _buildContactItem(
-                        imageUrl: coachData['imageUrl'],
-                        name: coachData['name'],
-                        daysRemaining: daysRemaining,
-                      );
-                    },
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    return const Center(child: Text('Vui lòng đăng nhập để xem liên hệ.'));
   }
+
+  return Column(
+    children: [
+      _buildContactSearchBar(),
+      const SizedBox(height: 10),
+      _buildContactHeader(),
+      const SizedBox(height: 10),
+      Expanded(
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('contacts')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text('Đã xảy ra lỗi: ${snapshot.error}'));
+            }
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Center(child: Text('Không có liên hệ nào.'));
+            }
+
+            final contacts = snapshot.data!.docs;
+
+            return ListView.builder(
+              itemCount: contacts.length,
+              itemBuilder: (context, index) {
+                final contact = contacts[index].data() as Map<String, dynamic>;
+                final contactId = contacts[index].id; // Lấy documentId của liên hệ
+
+                return FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance
+                      .collection('coachs')
+                      .doc(contact['coachId'])
+                      .get(),
+                  builder: (context, coachSnapshot) {
+                    if (coachSnapshot.connectionState == ConnectionState.waiting) {
+                      return const ListTile(
+                        title: Text('Đang tải...'),
+                      );
+                    }
+                    if (coachSnapshot.hasError) {
+                      return ListTile(
+                        title: Text('Lỗi: ${coachSnapshot.error}'),
+                      );
+                    }
+                    if (!coachSnapshot.hasData || !coachSnapshot.data!.exists) {
+                      return const ListTile(
+                        title: Text('Huấn luyện viên không tồn tại.'),
+                      );
+                    }
+
+                    final coachData = coachSnapshot.data!.data() as Map<String, dynamic>;
+                    final endDate = DateTime.parse(contact['endDate']);
+                    final daysRemaining = endDate.difference(DateTime.now()).inDays;
+
+                    return _buildContactItem(
+                      imageUrl: coachData['imageUrl'],
+                      name: coachData['name'],
+                      daysRemaining: daysRemaining,
+                      contactId: contactId, // Truyền documentId của liên hệ
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
+      ),
+    ],
+  );
+}
   Widget _buildContactSearchBar() {
     return TextField(
       decoration: InputDecoration(
@@ -216,6 +220,7 @@ class _PTPageState extends State<PTPage> {
   required String imageUrl,
   required String name,
   required int daysRemaining,
+  required String contactId
 }) {
   return Card(
     elevation: 4, // Độ đổ bóng
@@ -259,8 +264,18 @@ class _PTPageState extends State<PTPage> {
           // Nút tin nhắn
           IconButton(
             icon: const Icon(Icons.message, color: blue), // Màu icon
-            onPressed: () {
-              // Xử lý logic nhắn tin
+           onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MessengerPage(
+                    contactId: contactId,
+                    coachId: 'coachId', // Thay bằng ID của huấn luyện viên
+                    coachName: name,
+                    coachImageUrl: imageUrl,
+                  ),
+                ),
+              );
             },
           ),
         ],
