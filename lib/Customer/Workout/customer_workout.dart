@@ -7,7 +7,6 @@ class WorkoutPage extends StatefulWidget {
   @override
   _WorkoutPageState createState() => _WorkoutPageState();
 }
-
 class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStateMixin {
   final String userId = FirebaseAuth.instance.currentUser!.uid;
   String? selectedWorkoutId;
@@ -21,8 +20,8 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
   int _userLevel = 1;
   double _expProgress = 0.0;
   bool _workedOutToday = false;
-  List<String> _achievements = [];
-
+  List<Achievement> _achievements = [];
+  DateTime? _lastWorkoutDate;
   @override
   void initState() {
     super.initState();
@@ -49,41 +48,63 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
         _experiencePoints = data['experiencePoints'] ?? 0;
         _userLevel = data['userLevel'] ?? 1;
         _expProgress = (_experiencePoints % 10) / 10.0;
-        _achievements = List<String>.from(data['achievements'] ?? []);
-        _workedOutToday = data['lastWorkoutDate'] != null && 
-            _isSameDay(DateTime.now(), (data['lastWorkoutDate'] as Timestamp).toDate());
+        _lastWorkoutDate = data['lastWorkoutDate']?.toDate();
+        _workedOutToday = _lastWorkoutDate != null && 
+            _isSameDay(DateTime.now(), _lastWorkoutDate!);
+        
+        // Load achievements with proper data structure
+        _achievements = (data['achievements'] as List<dynamic>? ?? [])
+            .map((a) => Achievement.fromMap(a))
+            .toList();
       });
     }
   }
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
+  Future<void> _resetDailyWorkouts() async {
+    final now = DateTime.now();
+    // Only reset if it's a new day and user hasn't worked out yet
+    if (_lastWorkoutDate == null || !_isSameDay(now, _lastWorkoutDate!)) {
+      // Reset all workout completions for the day
+      final workoutsSnapshot = await FirebaseFirestore.instance
+          .collection('workouts')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in workoutsSnapshot.docs) {
+        batch.update(doc.reference, {'completed': false});
+      }
+      await batch.commit();
+    }
+  }
   Future<void> _updateWorkoutCompletion() async {
     final now = DateTime.now();
     final userRef = FirebaseFirestore.instance.collection('users').doc(userId);
     
-    // Get current user data
-    final userDoc = await userRef.get();
-    final data = userDoc.data() as Map<String, dynamic>;
-    final lastWorkoutDate = data['lastWorkoutDate'] != null 
-        ? (data['lastWorkoutDate'] as Timestamp).toDate() 
-        : null;
-    
-    // Calculate new streak
+    // Reset workouts for new day if needed
+    await _resetDailyWorkouts();
+
+    // Calculate streak - only update if it's a new day
     int newStreak = _currentStreak;
-    if (lastWorkoutDate == null || !_isSameDay(now, lastWorkoutDate)) {
-      // Check if yesterday to maintain streak
-      if (lastWorkoutDate != null && now.difference(lastWorkoutDate).inDays == 1) {
+    if (_lastWorkoutDate == null || !_isSameDay(now, _lastWorkoutDate!)) {
+      // Check if consecutive day
+      if (_lastWorkoutDate != null && 
+          now.difference(_lastWorkoutDate!).inDays == 1) {
         newStreak++;
+      } else if (_lastWorkoutDate != null && 
+          now.difference(_lastWorkoutDate!).inDays > 1) {
+        newStreak = 1; // Reset streak if gap more than 1 day
       } else {
-        newStreak = 1; // Reset streak if not consecutive
+        newStreak = _lastWorkoutDate == null ? 1 : newStreak + 1;
       }
     }
-    
+
     // Calculate experience
     int newExp = _experiencePoints + 1;
     int newLevel = _userLevel;
-    List<String> newAchievements = List.from(_achievements);
+    List<Achievement> newAchievements = List.from(_achievements);
     
     // Check for level up
     if (newExp >= newLevel * 10) {
@@ -91,20 +112,48 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
       newLevel++;
       
       // Add level achievements
-      if (newLevel >= 5 && !newAchievements.contains('level_5')) {
-        newAchievements.add('level_5');
+      if (newLevel >= 5 && !newAchievements.any((a) => a.id == 'level_5')) {
+        newAchievements.add(Achievement(
+          id: 'level_5',
+          title: 'Cấp 5',
+          description: 'Đạt cấp độ 5',
+          icon: Icons.star,
+          color: Colors.blue,
+          unlockedDate: DateTime.now(),
+        ));
       }
-      if (newLevel >= 10 && !newAchievements.contains('level_10')) {
-        newAchievements.add('level_10');
+      if (newLevel >= 10 && !newAchievements.any((a) => a.id == 'level_10')) {
+        newAchievements.add(Achievement(
+          id: 'level_10',
+          title: 'Cấp 10',
+          description: 'Đạt cấp độ 10',
+          icon: Icons.star,
+          color: Colors.purple,
+          unlockedDate: DateTime.now(),
+        ));
       }
     }
     
     // Check for streak achievements
-    if (newStreak >= 7 && !newAchievements.contains('streak_7')) {
-      newAchievements.add('streak_7');
+    if (newStreak >= 7 && !newAchievements.any((a) => a.id == 'streak_7')) {
+      newAchievements.add(Achievement(
+        id: 'streak_7',
+        title: '7 Ngày Liên Tiếp',
+        description: 'Tập luyện 7 ngày liên tiếp',
+        icon: Icons.emoji_events,
+        color: Colors.amber,
+        unlockedDate: DateTime.now(),
+      ));
     }
-    if (newStreak >= 30 && !newAchievements.contains('streak_30')) {
-      newAchievements.add('streak_30');
+    if (newStreak >= 30 && !newAchievements.any((a) => a.id == 'streak_30')) {
+      newAchievements.add(Achievement(
+        id: 'streak_30',
+        title: '30 Ngày Liên Tiếp',
+        description: 'Tập luyện 30 ngày liên tiếp',
+        icon: Icons.emoji_events,
+        color: Colors.deepOrange,
+        unlockedDate: DateTime.now(),
+      ));
     }
     
     // Update Firestore
@@ -114,7 +163,7 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
       'totalWorkouts': _totalWorkouts + 1,
       'experiencePoints': newExp,
       'userLevel': newLevel,
-      'achievements': newAchievements,
+      'achievements': newAchievements.map((a) => a.toMap()).toList(),
     });
     
     setState(() {
@@ -125,10 +174,10 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
       _expProgress = (newExp % 10) / 10.0;
       _achievements = newAchievements;
       _workedOutToday = true;
+      _lastWorkoutDate = now;
     });
   }
 
-  // Add this new widget method for the progress header
   Widget _buildProgressHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
@@ -138,23 +187,27 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
           end: Alignment.bottomRight,
           colors: [blue, const Color.fromARGB(255, 2, 5, 165)],
         ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
       ),
       child: Column(
         children: [
-          // Streak counter
+          // Streak and stats
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildStatItem(
                 icon: Icons.local_fire_department,
-                value: '$_currentStreak ngày',
-                label: 'Chuỗi tập luyện',
+                value: '$_currentStreak',
+                label: 'Ngày liên tiếp',
                 color: Colors.orange,
               ),
               _buildStatItem(
                 icon: Icons.fitness_center,
                 value: '$_totalWorkouts',
-                label: 'Tổng buổi tập',
+                label: 'Buổi tập',
                 color: Colors.green,
               ),
               _buildStatItem(
@@ -185,63 +238,71 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
                 ],
               ),
               const SizedBox(height: 5),
-              LinearProgressIndicator(
-                value: _expProgress,
-                backgroundColor: Colors.grey[800],
-                color: Colors.lightBlueAccent,
-                minHeight: 10,
-                borderRadius: BorderRadius.circular(5),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: _expProgress,
+                  backgroundColor: Colors.grey[800],
+                  color: Colors.lightBlueAccent,
+                  minHeight: 10,
+                ),
               ),
             ],
           ),
           
-          // Achievements preview
+          // Achievements section
           if (_achievements.isNotEmpty) ...[
             const SizedBox(height: 15),
             SizedBox(
-              height: 40,
+              height: 60,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                children: _achievements.map((achievement) {
-                  IconData icon;
-                  Color color;
-                  String tooltip;
-                  
-                  switch (achievement) {
-                    case 'streak_7':
-                      icon = Icons.emoji_events;
-                      color = Colors.amber;
-                      tooltip = '7 ngày liên tiếp';
-                      break;
-                    case 'streak_30':
-                      icon = Icons.emoji_events;
-                      color = Colors.deepOrange;
-                      tooltip = '30 ngày liên tiếp';
-                      break;
-                    case 'level_5':
-                      icon = Icons.star;
-                      color = Colors.blue;
-                      tooltip = 'Đạt cấp 5';
-                      break;
-                    case 'level_10':
-                      icon = Icons.star;
-                      color = Colors.purple;
-                      tooltip = 'Đạt cấp 10';
-                      break;
-                    default:
-                      icon = Icons.check_circle;
-                      color = Colors.green;
-                      tooltip = 'Thành tựu';
-                  }
-                  
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: Tooltip(
-                      message: tooltip,
-                      child: Icon(icon, color: color, size: 30),
+                children: [
+                  // Current streak indicator
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.orange),
                     ),
-                  );
-                }).toList(),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.local_fire_department, color: Colors.orange, size: 20),
+                        const SizedBox(width: 5),
+                        Text(
+                          '$_currentStreak ngày',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Achievements
+                  ..._achievements.map((achievement) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Tooltip(
+                      message: '${achievement.title}\n${achievement.description}',
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: achievement.color.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: achievement.color,
+                            width: 2,
+                          ),
+                        ),
+                        child: Icon(
+                          achievement.icon,
+                          color: achievement.color,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  )).toList(),
+                ],
               ),
             ),
           ],
@@ -250,17 +311,18 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
           if (_workedOutToday) ...[
             const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
               decoration: BoxDecoration(
                 color: Colors.green.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.green),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check, color: Colors.green, size: 16),
-                  SizedBox(width: 5),
-                  Text(
+                  const Icon(Icons.check, color: Colors.green, size: 16),
+                  const SizedBox(width: 5),
+                  const Text(
                     'Đã hoàn thành hôm nay',
                     style: TextStyle(color: Colors.white, fontSize: 12),
                   ),
@@ -276,40 +338,53 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
   Widget _buildStatItem({required IconData icon, required String value, required String label, required Color color}) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 30),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
         const SizedBox(height: 5),
         Text(
           value,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+          style: const TextStyle(
+            color: Colors.white, 
+            fontWeight: FontWeight.bold, 
+            fontSize: 16
+          ),
         ),
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          style: const TextStyle(
+            color: Colors.white70, 
+            fontSize: 12
+          ),
         ),
       ],
     );
   }
+
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    body: Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [blue, Colors.black],
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [blue, Colors.black],
+          ),
         ),
-      ),
-      child: Column(
-        children: [
-          _buildProgressHeader(), // Thêm phần header tiến độ ở đây
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 0.0), // Giảm khoảng cách từ 200 xuống 20
+        child: Column(
+          children: [
+            _buildProgressHeader(),
+            Expanded(
               child: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: const BorderRadius.only(
+                  borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(30),
                     topRight: Radius.circular(30),
                   ),
@@ -322,12 +397,11 @@ Widget build(BuildContext context) {
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildWorkoutList() {
   return Column(
@@ -909,35 +983,31 @@ Widget build(BuildContext context) {
                 child: Text('Thêm bài tập', style: TextStyle(color: Colors.white)),
               ),
             ),
-            SizedBox(width: 10), // Khoảng cách giữa 2 nút
-
-            // Nút bắt đầu tập luyện
+            SizedBox(width: 10), 
             Expanded(
-  child: ElevatedButton(
-    onPressed: () {
-      setState(() {
-        _isWorkoutStarted = true;
-      });
-    },
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.red,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: EdgeInsets.symmetric(vertical: 16),
-    ),
-    child: Text('Bắt đầu tập luyện', 
-        style: TextStyle(color: Colors.white, fontSize: 16)),
-  ),
-),
-          ],
-        ),
-      ),
-    ],
-  );
-}
-
-// Hàm hiển thị popup thêm bài tập
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _isWorkoutStarted = true;
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: Text('Bắt đầu tập luyện', 
+                    style: TextStyle(color: Colors.white, fontSize: 16)),
+              ),
+            ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
 void _showAddExerciseDialog(String workoutId) {
   final nameController = TextEditingController();
   final weightController = TextEditingController();
@@ -1010,7 +1080,6 @@ void _showAddExerciseDialog(String workoutId) {
                   weightController.text.isNotEmpty &&
                   repsController.text.isNotEmpty &&
                   restController.text.isNotEmpty) {
-                // Thêm bài tập vào Firestore
                 final exerciseRef = await FirebaseFirestore.instance
                     .collection('users')
                     .doc(userId)
@@ -1020,8 +1089,6 @@ void _showAddExerciseDialog(String workoutId) {
                     .add({
                   'name': nameController.text,
                 });
-
-                // Thêm set vào Firestore
                 await FirebaseFirestore.instance
                     .collection('users')
                     .doc(userId)
@@ -1046,11 +1113,9 @@ void _showAddExerciseDialog(String workoutId) {
     },
   );
 }
-
   Widget _buildDetailsTab(String workoutId) {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _imageUrlController = TextEditingController();
-
   return StreamBuilder<DocumentSnapshot>(
     stream: FirebaseFirestore.instance
         .collection('users')
@@ -1068,15 +1133,12 @@ void _showAddExerciseDialog(String workoutId) {
       if (!snapshot.hasData || !snapshot.data!.exists) {
         return const Center(child: Text('Không tìm thấy bài tập.'));
       }
-
       final workoutData = snapshot.data!.data() as Map<String, dynamic>;
       final name = workoutData['name'] ?? 'Không có tên';
       final imageUrl = workoutData['imageUrl'] ?? '';
       final date = workoutData['date'] != null
           ? (workoutData['date'] as Timestamp).toDate().toString()
           : 'Không có ngày tạo';
-
-      // Đặt giá trị hiện tại vào các ô nhập liệu
       _nameController.text = name;
       _imageUrlController.text = imageUrl;
 
@@ -1085,7 +1147,6 @@ void _showAddExerciseDialog(String workoutId) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ô nhập tên
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
@@ -1094,8 +1155,6 @@ void _showAddExerciseDialog(String workoutId) {
               ),
             ),
             const SizedBox(height: 20),
-
-            // Ô nhập hình ảnh
             TextField(
               controller: _imageUrlController,
               decoration: InputDecoration(
@@ -1104,8 +1163,6 @@ void _showAddExerciseDialog(String workoutId) {
               ),
             ),
             const SizedBox(height: 20),
-
-            // Hiển thị hình ảnh
             if (imageUrl.isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
@@ -1117,15 +1174,11 @@ void _showAddExerciseDialog(String workoutId) {
                 ),
               ),
             const SizedBox(height: 20),
-
-            // Ngày tạo
             Text(
               'Ngày tạo: $date',
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 20),
-
-            // Nút Lưu
             Center(
               child: ElevatedButton(
                 onPressed: () async {
@@ -1310,5 +1363,62 @@ void _showAddExerciseDialog(String workoutId) {
         }
       }
     }
+  }
+}
+class Achievement {
+  final String id;
+  final String title;
+  final String description;
+  final IconData icon;
+  final Color color;
+  final DateTime unlockedDate;
+
+  Achievement({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.color,
+    required this.unlockedDate,
+  });
+
+  factory Achievement.fromMap(Map<String, dynamic> map) {
+    return Achievement(
+      id: map['id'],
+      title: map['title'],
+      description: map['description'],
+      icon: _getIconData(map['icon']),
+      color: _getColor(map['color']),
+      unlockedDate: map['unlockedDate'].toDate(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'icon': _getIconName(icon),
+      'color': color.value,
+      'unlockedDate': unlockedDate,
+    };
+  }
+
+  static IconData _getIconData(String iconName) {
+    switch (iconName) {
+      case 'star': return Icons.star;
+      case 'emoji_events': return Icons.emoji_events;
+      default: return Icons.check_circle;
+    }
+  }
+
+  static String _getIconName(IconData icon) {
+    if (icon == Icons.star) return 'star';
+    if (icon == Icons.emoji_events) return 'emoji_events';
+    return 'check_circle';
+  }
+
+  static Color _getColor(int colorValue) {
+    return Color(colorValue);
   }
 }

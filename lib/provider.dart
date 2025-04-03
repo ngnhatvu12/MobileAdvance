@@ -7,6 +7,6 @@ class AvatarProvider with ChangeNotifier {
 
   void updateAvatarText(String newText) {
     _avatarText = newText;
-    notifyListeners(); // Thông báo cho Consumer rebuild
+    notifyListeners();
   }
 }

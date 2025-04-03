@@ -114,7 +114,6 @@ class CourseItem extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    // Chuyển sang trang chi tiết khóa học
                     Navigator.push(
                       context,
                       MaterialPageRoute(

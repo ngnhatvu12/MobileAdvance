@@ -72,7 +72,6 @@ String _getInitials(String name) {
     return (words[0][0] + words[1][0]).toUpperCase();
   }
 }
-  // Hàm xử lý khi người dùng chọn một nút trong Navigation Bar
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index; // Cập nhật chỉ số trang hiện tại
@@ -344,7 +343,6 @@ String _getWeekday(int weekday) {
               ],
             ),
             const SizedBox(height: 20),
-
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('news').snapshots(),
               builder: (context, snapshot) {
@@ -362,24 +360,24 @@ String _getWeekday(int weekday) {
                     scrollDirection: Axis.horizontal,
                     itemCount: news.length,
                     itemBuilder: (context, index) {
-  final doc = news[index];
-  final title = doc['name'] ?? 'Không có tiêu đề';
-  final imageUrl = doc['imageUrl'] ?? '';
-  final date = doc['date'] ?? '';
+                      final doc = news[index];
+                      final title = doc['name'] ?? 'Không có tiêu đề';
+                      final imageUrl = doc['imageUrl'] ?? '';
+                      final date = doc['date'] ?? '';
 
-  return GestureDetector(
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => NewsDetailPage(
-            newsItem: {
-              'id': doc.id,
-              'name': title,
-              'imageUrl': imageUrl,
-              'date': date,
-              'detail': doc['detail'],
-            },
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => NewsDetailPage(
+                                newsItem: {
+                                  'id': doc.id,
+                                  'name': title,
+                                  'imageUrl': imageUrl,
+                                  'date': date,
+                                  'detail': doc['detail'],
+                                },
           ),
         ),
       );

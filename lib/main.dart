@@ -1,4 +1,4 @@
-import 'package:do_an_lt/coach_main.dart';
+import 'package:do_an_lt/Coach/Dashboard/coach_main.dart';
 import 'package:do_an_lt/Customer/Home/customer_main.dart';
 import 'package:do_an_lt/splash_screen.dart';
 import 'package:flutter/material.dart';
@@ -30,9 +30,9 @@ class MyApp extends StatelessWidget {
       ),
       home: const SplashScreen(),
       routes: {
-        '/splash_screen': (context) => GuessPage(), // Trang chính
-        '/login': (context) => LoginPage(), // Route đến trang login
-        '/register': (context) => RegisterPage(), // Route đến trang register
+        '/splash_screen': (context) => GuessPage(), 
+        '/login': (context) => LoginPage(), 
+        '/register': (context) => RegisterPage(), 
         '/customer_main': (context) => CustomerMainPage(),
         '/coach_main': (context) => CoachMainPage(),
       },

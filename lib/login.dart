@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:do_an_lt/theme/colors.dart';
-import 'Customer/Home/customer_main.dart'; // Import màn hình khách hàng
-import 'coach_main.dart'; // Import màn hình huấn luyện viên
+import 'Customer/Home/customer_main.dart'; 
+import 'Coach/Dashboard/coach_main.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -30,14 +30,11 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     try {
-      // Đăng nhập bằng Firebase Authentication
       UserCredential userCredential =
           await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-
-      // Lấy thông tin người dùng từ Firestore bằng uid
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
@@ -111,8 +108,7 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                 ),
-                SizedBox(height: 20),
-
+                SizedBox(height: 10),
                 Center(
                   child: Image.asset(
                     'assets/icons/workout.png',
@@ -121,9 +117,7 @@ class _LoginPageState extends State<LoginPage> {
                     fit: BoxFit.cover,
                   ),
                 ),
-                SizedBox(height: 20),
-
-                // Hộp viền chứa tiêu đề và ô nhập
+                SizedBox(height: 10),
                 Stack(
                   alignment: Alignment.topCenter,
                   children: [
@@ -173,8 +167,6 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                       ),
                     ),
-
-                    // Chữ Đăng nhập đè lên hộp viền
                     Positioned(
                       top: 10,
                       child: Container(
@@ -191,7 +183,6 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ],
                 ),
-
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -238,7 +229,7 @@ class _LoginPageState extends State<LoginPage> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: _login, // Gọi hàm đăng nhập
+                    onPressed: _login,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       shape: RoundedRectangleBorder(

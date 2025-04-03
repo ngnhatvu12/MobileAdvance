@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:do_an_lt/Customer/Home/news_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:do_an_lt/theme/colors.dart';
 import 'package:carousel_slider/carousel_slider.dart';
@@ -37,7 +39,6 @@ class _GuessPageState extends State<GuessPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Preload images sau khi context đã sẵn sàng
     for (var imageUrl in _imageUrls) {
       precacheImage(AssetImage(imageUrl), context);
     }
@@ -192,7 +193,8 @@ class _GuessPageState extends State<GuessPage> {
               ],
             ),
           ),
-          SizedBox(height: 40),
+          SizedBox(height: 20),
+          Text('Khóa học',style: TextStyle( fontSize: 22,fontWeight: FontWeight.bold,),),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: GridView.count(
@@ -206,7 +208,7 @@ class _GuessPageState extends State<GuessPage> {
                 buildWorkoutButton("GYM"),
                 buildWorkoutButton("CYCLING"),
                 buildWorkoutButton("BƠI"),
-                buildWorkoutButton("CIRCUIT"),
+                buildWorkoutButton("YOGA"),
                 buildWorkoutButton("DANCE"),
                 buildWorkoutButton("GROUP X"),
               ],
@@ -226,7 +228,10 @@ class _GuessPageState extends State<GuessPage> {
                 setState(() => _currentIndex = index);
               },
             ),
-            items: _imageUrls.map((url) => Image.asset(url, fit: BoxFit.cover)).toList(),
+            items: _imageUrls.map((url) => ClipRRect(
+                borderRadius: BorderRadius.circular(25),
+                child: Image.asset(url, fit: BoxFit.cover),
+              )).toList(),
           ),
           SizedBox(height: 10),
           AnimatedSmoothIndicator(
@@ -240,7 +245,9 @@ class _GuessPageState extends State<GuessPage> {
               activeDotColor: Colors.grey.shade900,
               paintStyle: PaintingStyle.fill,
             ),
-          )
+          ),
+          SizedBox(height: 30),
+          NewsSection(),
         ],
       ),
     );
@@ -410,48 +417,377 @@ class _GuessPageState extends State<GuessPage> {
   }
 
   Widget buildFeatureButton(IconData icon, String text) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.red,
+    return GestureDetector(
+      onTap: () => _showLoginRequiredDialog(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.red,
+            ),
+            child: Icon(icon, color: Colors.white, size: 28),
           ),
-          child: Icon(icon, color: Colors.white, size: 28),
-        ),
-        SizedBox(height: 8),
-        SizedBox(
-          width: 80,
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          SizedBox(height: 8),
+          SizedBox(
+            width: 80,
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget buildWorkoutButton(String text) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.red,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      alignment: Alignment.center,
-      child: Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: Colors.white, 
-            fontSize: 14, 
-            fontWeight: FontWeight.bold
+  Widget buildWorkoutButton(String type) {
+    return GestureDetector(
+      onTap: () => _navigateToClassList(context,type),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        alignment: Alignment.center,
+        child: Padding(
+          padding: EdgeInsets.all(8.0),
+          child: Text(
+            type,
+            style: TextStyle(
+              color: Colors.white, 
+              fontSize: 14, 
+              fontWeight: FontWeight.bold
+            ),
           ),
         ),
+      ),
+    );
+  }
+  void _showLoginRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Yêu cầu đăng nhập"),
+        content: Text("Bạn cần đăng nhập để sử dụng tính năng này"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Hủy", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: blue),
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, "/login");
+            },
+            child: Text("Đăng nhập", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+  void _navigateToClassList(BuildContext context, String type) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ClassListPage(workoutType: type.toLowerCase()),
+    ),
+  );
+}
+}
+class ClassListPage extends StatelessWidget {
+  final String workoutType;
+
+  const ClassListPage({Key? key, required this.workoutType}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Lớp $workoutType'.toUpperCase()),
+        backgroundColor: blue,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('class')
+            .where('type', isEqualTo: workoutType)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(child: Text('Không có lớp học nào'));
+          }
+
+          return ListView.builder(
+            padding: EdgeInsets.all(16),
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              final doc = snapshot.data!.docs[index];
+              return _buildClassItem(context,doc);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildClassItem(BuildContext context, DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    return Card(
+      elevation: 3,
+      margin: EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+            child: Image.network(
+              data['imageUrl'],
+              height: 150,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                height: 150,
+                color: Colors.grey[200],
+                child: Center(child: Icon(Icons.image, size: 50, color: Colors.grey)),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data['name'],
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.access_time, size: 16, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text(data['time']),
+                  ],
+                ),
+                SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text(data['location']),
+                  ],
+                ),
+                SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${data['price']} USD',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: blue,
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: blue,
+                      ),
+                      onPressed: () {
+                        _showLoginRequiredDialog(context);
+                      },
+                      child: Text(
+                        'Xem chi tiết',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLoginRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Yêu cầu đăng nhập"),
+        content: Text("Bạn cần đăng nhập để xem chi tiết lớp học"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Hủy", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: blue),
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, "/login");
+            },
+            child: Text("Đăng nhập", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+class NewsSection extends StatefulWidget  {
+  const NewsSection({super.key});
+
+  @override
+  _NewsSectionState createState() => _NewsSectionState();
+}
+
+class _NewsSectionState extends State<NewsSection> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tin tức',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 15),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('news').limit(3).snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Text('Không có tin tức nào.');
+              }
+              final news = snapshot.data!.docs;
+
+              return SizedBox(
+                height: 220,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: news.length,
+                  itemBuilder: (context, index) {
+                    final doc = news[index];
+                    final title = doc['name'] ?? 'Không có tiêu đề';
+                    final imageUrl = doc['imageUrl'] ?? '';
+                    final date = doc['date'] ?? '';
+
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => NewsDetailPage(
+                              newsItem: {
+                                'id': doc.id,
+                                'name': title,
+                                'imageUrl': imageUrl,
+                                'date': date,
+                                'detail': doc['detail'],
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 250,
+                        margin: EdgeInsets.only(right: 15),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 5,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                          color: Colors.white,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(15),
+                                topRight: Radius.circular(15),
+                              ),
+                              child: Image.network(
+                                imageUrl,
+                                height: 120,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                  height: 120,
+                                  color: Colors.grey[200],
+                                  child: Center(child: Icon(Icons.error)),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.all(10),
+                              child: Text(
+                                title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.only(left: 10, bottom: 10),
+                              child: Text(
+                                date,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
