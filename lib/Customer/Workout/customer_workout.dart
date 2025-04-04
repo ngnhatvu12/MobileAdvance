@@ -367,41 +367,55 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [blue, Colors.black],
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: Stack(  
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [blue, Colors.black],
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            _buildProgressHeader(),
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
+          child: Column(
+            children: [
+              _buildProgressHeader(),
+              Expanded(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: selectedWorkoutId == null
+                        ? _buildWorkoutList()
+                        : _buildExercisePage(selectedWorkoutId!, selectedWorkoutName!),
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: selectedWorkoutId == null
-                      ? _buildWorkoutList()
-                      : _buildExercisePage(selectedWorkoutId!, selectedWorkoutName!),
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
+        if (selectedWorkoutId == null)
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: () => _showCreateWorkoutDialog(),
+              backgroundColor: Colors.blue,
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+          ),
+      ],
+    ),
+  );
+}
 
   Widget _buildWorkoutList() {
   return Column(
@@ -510,16 +524,6 @@ class _WorkoutPageState extends State<WorkoutPage> with SingleTickerProviderStat
               },
             );
           },
-        ),
-      ),
-      // Nút thêm bài tập
-      Positioned(
-        bottom: 20,
-        right: 20,
-        child: FloatingActionButton(
-          onPressed: () => _showCreateWorkoutDialog(),
-          backgroundColor: Colors.blue,
-          child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
     ],
@@ -1173,12 +1177,12 @@ void _showAddExerciseDialog(String workoutId) {
                   fit: BoxFit.cover,
                 ),
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Text(
               'Ngày tạo: $date',
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Center(
               child: ElevatedButton(
                 onPressed: () async {

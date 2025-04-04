@@ -1,16 +1,57 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:do_an_lt/Customer/Home/customer_main.dart';
 import 'package:do_an_lt/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-class MenuPage extends StatelessWidget {
+class MenuPage extends StatefulWidget {
   const MenuPage({super.key});
 
+  @override
+  State<MenuPage> createState() => _MenuPageState();
+}
+
+class _MenuPageState extends State<MenuPage> {
+  String? _imageUrl;
+  String _avatarText = 'NV';
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // Lấy customerId từ users collection
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      
+      if (userDoc.exists && userDoc.data()?['customerId'] != null) {
+        final customerId = userDoc.data()?['customerId'];      
+        final customerDoc = await FirebaseFirestore.instance
+            .collection('customers')
+            .doc(customerId)
+            .get();        
+        if (customerDoc.exists) {
+          setState(() {
+            _imageUrl = customerDoc.data()?['imageUrl'];
+            final name = customerDoc.data()?['name'] as String?;
+            if (name != null && name.isNotEmpty) {
+              _avatarText = name.substring(0, 2).toUpperCase();
+            }
+          });
+        }
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // BACKGROUND TOÀN MÀN HÌNH
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -36,12 +77,31 @@ class MenuPage extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Icon(LucideIcons.bell, color: Colors.white, size: 40),
-                          CircleAvatar(
-                          backgroundColor: Colors.blue.shade300,
-                          radius: 30,
-                          child: CircleAvatar(
-                            backgroundColor: Colors.blue.shade300,
-                            radius: 25,                       
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SettingsPage(),
+                                ),
+                              );
+                            },
+                            child: CircleAvatar(
+                              backgroundColor: Colors.blue.shade300,
+                              radius: 25,
+                              child: _imageUrl != null && _imageUrl!.isNotEmpty
+                                  ? ClipOval(
+                                      child: Image.network(
+                                        _imageUrl!,
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return _buildFallbackAvatar();
+                                        },
+                                      ),
+                                    )
+                                  : _buildFallbackAvatar(),
                             ),
                           ),
                         ],
@@ -115,9 +175,21 @@ class MenuPage extends StatelessWidget {
       ),
     );
   }
+  Widget _buildFallbackAvatar() {
+    return CircleAvatar(
+      backgroundColor: Colors.blue.shade300,
+      radius: 25,
+      child: Text(
+        _avatarText,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
 }
-
-// DANH SÁCH ICON + TEXT MENU
 List<Map<String, dynamic>> menuItems = [
   {"title": "Home", "icon": LucideIcons.home},
   {"title": "Contacts", "icon": LucideIcons.contact},

@@ -128,7 +128,10 @@ class _MessengerPageState extends State<MessengerPage> {
                   itemBuilder: (context, index) {
                     final message = messages[index].data() as Map<String, dynamic>;
                     final isMe = message['senderId'] == user.uid;
-                    final timestamp = (message['timestamp'] as Timestamp).toDate();
+                    final timestamp = message['timestamp'] != null 
+                                  ? (message['timestamp'] as Timestamp).toDate()
+                                  : DateTime.now();
+                                  
                     final timeString = '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
 
                     if (isMe) {

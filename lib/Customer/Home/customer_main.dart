@@ -5,9 +5,9 @@ import 'package:do_an_lt/Customer/Home/news_detail.dart';
 import 'package:do_an_lt/Customer/Home/schedule.dart';
 import 'package:do_an_lt/Customer/Menu/customer_menu.dart';
 import 'package:do_an_lt/Widget/schedule_item.dart';
+import 'package:do_an_lt/guess_page.dart';
 import 'package:do_an_lt/theme/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../PT/customer_pt.dart';
 import '../Workout/customer_workout.dart';
 import '../Nutrition/customer_nutrition.dart';
@@ -24,7 +24,6 @@ class CustomerMainPage extends StatefulWidget {
 class _CustomerMainPageState extends State<CustomerMainPage> {
   int _selectedIndex = 0; // Chỉ số của trang hiện tại
   String _avatarText = '';
-  
   List<Widget> get _pages => [
         HomePage(
           onIndexChanged: (index) {
@@ -44,7 +43,6 @@ class _CustomerMainPageState extends State<CustomerMainPage> {
     super.initState();
     _fetchCustomerName();
   }
-  // Hàm lấy tên khách hàng từ Firestore
   void _fetchCustomerName() async {
   final user = FirebaseAuth.instance.currentUser;
   if (user != null) {
@@ -74,7 +72,7 @@ String _getInitials(String name) {
 }
   void _onItemTapped(int index) {
     setState(() {
-      _selectedIndex = index; // Cập nhật chỉ số trang hiện tại
+      _selectedIndex = index;
     });
   }
 
@@ -91,9 +89,9 @@ Widget build(BuildContext context) {
   return Scaffold(
     body: _pages[_selectedIndex],
     bottomNavigationBar: CurvedNavigationBar(
-      backgroundColor: Colors.transparent, // Màu nền của nội dung trên body
-      color: Colors.blue, // Màu của navigation bar
-      buttonBackgroundColor: Colors.blueAccent, // Màu nền của nút được chọn
+      backgroundColor: Colors.transparent, 
+      color: Colors.blue,
+      buttonBackgroundColor: Colors.blueAccent, 
       height: 60,
       index: _selectedIndex,
       items: items,
@@ -121,11 +119,17 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  String? _imageUrl;
   String _avatarText = '';
   String _searchQuery = '';
   bool _sortByNewest = false;
   String _twoDigits(int n) => n.toString().padLeft(2, '0');
   final List<String> _tabs = ['Hôm nay', 'Hoạt động', 'Tin tức'];
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
   void _onSearch(String query) {
     setState(() {
       _searchQuery = query;
@@ -159,7 +163,55 @@ class _HomePageState extends State<HomePage> {
     },
   );
 }
-
+Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        // Lấy customerId từ users collection
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        
+        if (userDoc.exists && userDoc.data()?['customerId'] != null) {
+          final customerId = userDoc.data()?['customerId'];
+          
+          // Lấy thông tin customer từ customers collection
+          final customerDoc = await FirebaseFirestore.instance
+              .collection('customers')
+              .doc(customerId)
+              .get();
+          
+          if (customerDoc.exists) {
+            setState(() {
+              _imageUrl = customerDoc.data()?['imageUrl'];
+              // Lấy 2 chữ cái đầu của tên nếu có
+              final name = customerDoc.data()?['name'] as String?;
+              if (name != null && name.isNotEmpty) {
+                _avatarText = name.substring(0, 2).toUpperCase();
+              }
+            });
+          }
+        }
+      } catch (e) {
+        print('Error loading user data: $e');
+      }
+    }
+  }
+  Widget _buildFallbackAvatar() {
+    return CircleAvatar(
+      backgroundColor: Colors.blue.shade300,
+      radius: 25,
+      child: Text(
+        _avatarText,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
 String _getWeekday(int weekday) {
   switch (weekday) {
     case 1:
@@ -212,14 +264,19 @@ String _getWeekday(int weekday) {
                     child: CircleAvatar(
                       backgroundColor: Colors.blue.shade300,
                       radius: 25,
-                      child: CircleAvatar(
-                        backgroundColor: Colors.blue.shade300,
-                        radius: 25,
-                        child: Text(
-                          _avatarText.isNotEmpty ? _avatarText : 'NQ',
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                        ),
-                      ),
+                      child: _imageUrl != null && _imageUrl!.isNotEmpty
+                          ? ClipOval(
+                              child: Image.network(
+                                _imageUrl!,
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _buildFallbackAvatar();
+                                },
+                              ),
+                            )
+                          : _buildFallbackAvatar(),
                     ),
                   ),
                 ),
@@ -845,42 +902,283 @@ String _getWeekday(int weekday) {
   }
 }
 
+class SettingsPage extends StatefulWidget {
+  @override
+  _SettingsPageState createState() => _SettingsPageState();
+}
 
-class SettingsPage extends StatelessWidget {
+class _SettingsPageState extends State<SettingsPage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  String? _name;
+  String? _email;
+  String? _imageUrl;
+  Map<String, bool> _expandedItems = {
+    'Tùy chỉnh': false,
+    'Cài đặt tính năng': false,
+    'Báo cáo sự cố': false,
+    'Thông tin': false,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        final customerId = userDoc['customerId'];
+        if (customerId != null) {
+          final customerDoc = await _firestore.collection('customers').doc(customerId).get();
+          if (customerDoc.exists) {
+            setState(() {
+              _name = customerDoc['name'];
+              _email = userDoc['email'];
+              _imageUrl = customerDoc['imageUrl'];
+            });
+          }
+        }
+      }
+    }
+  }
+
+  void _toggleExpansion(String item) {
+    setState(() {
+      _expandedItems[item] = !_expandedItems[item]!;
+    });
+  }
+
+  void _logout(BuildContext context) {
+    _auth.signOut();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => GuessPage()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Cài đặt'),
-      ),
-      body: ListView(
-        padding: EdgeInsets.all(16),
+      body: Stack(
         children: [
-          ListTile(
-            title: Text('Tùy chỉnh'),
-            trailing: Checkbox(value: false, onChanged: (value) {}),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [blue, Colors.black],
+              ),
+            ),
           ),
-          ListTile(
-            title: Text('Cài đặt tính năng'),
-            trailing: Checkbox(value: false, onChanged: (value) {}),
+          
+          // Header với nút back và tiêu đề
+          Positioned(
+            top: 50,
+            left: 0,
+            right: 0,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  SizedBox(width: 16),
+                  Text(
+                    'Cài đặt',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          ListTile(
-            title: Text('Báo cáo sự cố'),
-            trailing: Checkbox(value: true, onChanged: (value) {}),
-          ),
-          ListTile(
-            title: Text('Thông tin'),
-            trailing: Checkbox(value: false, onChanged: (value) {}),
-          ),
-          Divider(),
-          ListTile(
-            title: Text('Đăng xuất'),
-            onTap: () {
-              // Xử lý đăng xuất
-            },
+          
+          Positioned.fill(
+            top: 120,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
+                ),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: 30),
+                  // Thông tin người dùng - Center aligned
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundImage: _imageUrl != null
+                        ? NetworkImage(_imageUrl!)
+                        : AssetImage('assets/images/gym.jpg') as ImageProvider,
+                  ),
+                  SizedBox(height: 16),               
+                  Text(
+                    _name ?? 'Loading...',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    _email ?? 'Loading...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Divider(height: 1, thickness: 1),               
+                  // Danh sách cài đặt
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        _buildSettingItem(
+                          title: 'Tổng quan',
+                          icon: Icons.dashboard,
+                          isExpanded: false,
+                          subItems: [],
+                        ),
+                        _buildSettingItem(
+                          title: 'Tùy chỉnh',
+                          icon: Icons.settings,
+                          isExpanded: _expandedItems['Tùy chỉnh']!,
+                          subItems: [
+                            'Giao diện',
+                            'Ngôn ngữ',
+                            'Thông báo',
+                          ],
+                        ),
+                        _buildSettingItem(
+                          title: 'Cài đặt tính năng',
+                          icon: Icons.tune,
+                          isExpanded: _expandedItems['Cài đặt tính năng']!,
+                          subItems: [
+                            'Chế độ tập luyện',
+                            'Mục tiêu cá nhân',
+                            'Kết nối thiết bị',
+                          ],
+                        ),
+                        _buildSettingItem(
+                          title: 'Báo cáo sự cố',
+                          icon: Icons.report,
+                          isExpanded: _expandedItems['Báo cáo sự cố']!,
+                          subItems: [
+                            'Gửi phản hồi',
+                            'Báo lỗi ứng dụng',
+                            'Liên hệ hỗ trợ',
+                          ],
+                        ),
+                        _buildSettingItem(
+                          title: 'Thông tin',
+                          icon: Icons.info,
+                          isExpanded: _expandedItems['Thông tin']!,
+                          subItems: [
+                            'Phiên bản ứng dụng',
+                            'Điều khoản sử dụng',
+                            'Chính sách bảo mật',
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Nút đăng xuất
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 30),
+                    child: Center(
+                      child: SizedBox(
+                        width: 200,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.black, width: 2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: () => _logout(context),
+                          child: Text(
+                            'Đăng xuất',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSettingItem({
+    required String title,
+    required IconData icon,
+    required bool isExpanded,
+    required List<String> subItems,
+  }) {
+    return Column(
+      children: [
+        ListTile(
+          leading: Icon(icon, color: Colors.black, size: 28),
+          title: Text(
+            title, 
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          trailing: subItems.isNotEmpty 
+              ? Icon(
+                  isExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: Colors.black,
+                  size: 28,
+                )
+              : null,
+          onTap: subItems.isNotEmpty ? () => _toggleExpansion(title) : null,
+          contentPadding: EdgeInsets.symmetric(vertical: 8),
+        ),
+        if (isExpanded && subItems.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+            child: Column(
+              children: subItems.map((subItem) => ListTile(
+                title: Text(
+                  subItem,
+                  style: TextStyle(fontSize: 16),
+                ),
+                leading: SizedBox(width: 16),
+                minLeadingWidth: 0,
+                onTap: () {
+                  // Xử lý khi chọn mục con
+                },
+              )).toList(),
+            ),
+          ),
+        Divider(height: 1, thickness: 1),
+      ],
     );
   }
 }

@@ -254,167 +254,254 @@ class _GuessPageState extends State<GuessPage> {
   }
 
   Widget _buildTutorialOverlay() {
-    return Container(
-      color: Colors.black.withOpacity(0.5),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: MediaQuery.of(context).size.width * 0.85,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: IconButton(
-                      icon: Icon(Icons.close, color: Colors.grey),
-                      onPressed: () => setState(() => _showTutorial = false),
-                    ),
+  return Stack(
+    children: [
+      // Full screen overlay
+      Container(
+        color: Colors.black.withOpacity(0.7),
+        width: double.infinity,
+        height: double.infinity,
+      ),
+      // Content column
+      Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: MediaQuery.of(context).size.width * 0.85,
+            constraints: BoxConstraints(maxWidth: 400),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with close button
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Hướng dẫn sử dụng',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, size: 24),
+                        onPressed: () => setState(() => _showTutorial = false),
+                        splashRadius: 20,
+                      ),
+                    ],
                   ),
-                  SizedBox(
-                    height: 500,
-                    child: PageView(
-                      controller: _tutorialPageController,
-                      onPageChanged: (index) => setState(() => _currentTutorialPage = index),
-                      children: [
-                        _buildTutorialPage(
-                          icon: Icons.fitness_center,
-                          image: _tutorialImages[0],
-                          title: 'Chào mừng đến với FitnessApp',
-                          description: 'Ứng dụng giúp bạn quản lý tập luyện, dinh dưỡng và kết nối với huấn luyện viên cá nhân',
-                        ),
-                        _buildTutorialPage(
-                          icon: Icons.calendar_today,
-                          image: _tutorialImages[1],
-                          title: 'Đặt lịch tập & Huấn luyện viên',
-                          description: 'Dễ dàng đặt lịch tập tại phòng gym hoặc với huấn luyện viên cá nhân theo thời gian biểu của bạn',
-                        ),
-                        _buildTutorialPage(
-                          icon: Icons.restaurant_menu,
-                          image: _tutorialImages[2],
-                          title: 'Bài tập & Dinh dưỡng',
-                          description: 'Theo dõi chế độ tập luyện và dinh dưỡng hàng ngày để đạt mục tiêu fitness của bạn',
-                        ),
-                      ],
-                    ),
+                ),
+                Divider(height: 1, thickness: 1, color: Colors.grey[200]),
+                // Content
+                Container(
+                  height: 360, // Increased height slightly from 320 to 360
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: PageView(
+                    controller: _tutorialPageController,
+                    onPageChanged: (index) => setState(() => _currentTutorialPage = index),
+                    children: [
+                      _buildTutorialPage(
+                        icon: Icons.fitness_center,
+                        image: _tutorialImages[0],
+                        title: 'Chào mừng đến với FitnessApp',
+                        description: 'Ứng dụng giúp bạn quản lý tập luyện, dinh dưỡng và kết nối với huấn luyện viên cá nhân',
+                        features: [
+                          'Theo dõi tiến độ tập luyện',
+                          'Kết nối với huấn luyện viên',
+                          'Quản lý chế độ dinh dưỡng'
+                        ],
+                      ),
+                      _buildTutorialPage(
+                        icon: Icons.calendar_today,
+                        image: _tutorialImages[1],
+                        title: 'Đặt lịch tập & Huấn luyện viên',
+                        description: 'Dễ dàng đặt lịch tập tại phòng gym hoặc với huấn luyện viên cá nhân',
+                        features: [
+                          'Đặt lịch theo thời gian biểu',
+                          'Nhận thông báo nhắc nhở',
+                          'Theo dõi lịch sử tập luyện'
+                        ],
+                      ),
+                      _buildTutorialPage(
+                        icon: Icons.restaurant_menu,
+                        image: _tutorialImages[2],
+                        title: 'Bài tập & Dinh dưỡng',
+                        description: 'Theo dõi chế độ tập luyện và dinh dưỡng hàng ngày',
+                        features: [
+                          'Thực đơn dinh dưỡng cá nhân hóa',
+                          'Bài tập theo mục tiêu',
+                          'Theo dõi chỉ số cơ thể'
+                        ],
+                      ),
+                    ],
                   ),
-                  SmoothPageIndicator(
+                ),
+                // Page indicator
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: SmoothPageIndicator(
                     controller: _tutorialPageController,
                     count: 3,
-                    effect: WormEffect(
+                    effect: ExpandingDotsEffect(
                       dotHeight: 8,
                       dotWidth: 8,
-                      spacing: 10,
-                      dotColor: Colors.grey.shade300,
+                      spacing: 8,
+                      expansionFactor: 3,
+                      dotColor: Colors.grey[300]!,
                       activeDotColor: blue,
                     ),
                   ),
-                  SizedBox(height: 20),
-                ],
-              ),
+                ),
+              ],
             ),
-            Padding(
-              padding: EdgeInsets.only(top: 20),
-              child: Row(
-                mainAxisAlignment: _currentTutorialPage == 0 
-                    ? MainAxisAlignment.center 
-                    : MainAxisAlignment.spaceEvenly,
-                children: [
-                  if (_currentTutorialPage > 0)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                      ),
-                      onPressed: () => _tutorialPageController.previousPage(
+          ),
+          // Navigation buttons
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Row(
+              mainAxisAlignment: _currentTutorialPage == 0
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.spaceBetween,
+              children: [
+                if (_currentTutorialPage > 0)
+                  TextButton(
+                    onPressed: () => _tutorialPageController.previousPage(
+                      duration: Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    child: Text('Quay lại', style: TextStyle(color: Colors.white)),
+                  ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_currentTutorialPage < 2) {
+                      _tutorialPageController.nextPage(
                         duration: Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
-                      ),
-                      child: Text('Trở lại', style: TextStyle(color: Colors.white)),
+                      );
+                    } else {
+                      setState(() => _showTutorial = false);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                    ),
-                    onPressed: () {
-                      if (_currentTutorialPage < 2) {
-                        _tutorialPageController.nextPage(
-                          duration: Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      } else {
-                        setState(() => _showTutorial = false);
-                      }
-                    },
-                    child: Text(
-                      _currentTutorialPage == 2 ? 'Đã hiểu' : 'Tiếp tục',
-                      style: TextStyle(color: Colors.white),
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                    elevation: 2,
+                  ),
+                  child: Text(
+                    _currentTutorialPage == 2 ? 'Bắt đầu' : 'Tiếp theo',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+Widget _buildTutorialPage({
+  required IconData icon,
+  required String image,
+  required String title,
+  required String description,
+  required List<String> features,
+}) {
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Image on top
+        Container(
+          width: 200,  
+          height: 120,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            image: DecorationImage(
+              image: AssetImage(image),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        SizedBox(height: 12),
+        // Content below
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 24, color: blue),
+            SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTutorialPage({
-    required IconData icon,
-    required String image,
-    required String title,
-    required String description,
-  }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 50, color: blue),
-          SizedBox(height: 20),
-          Image.asset(
-            image,
-            height: 150,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => 
-              Container(height: 150, color: Colors.grey[200]),
+        SizedBox(height: 8),
+        Text(
+          description,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[700],
+            height: 1.3,
           ),
-          SizedBox(height: 20),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+        ),
+        SizedBox(height: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: features.map((feature) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.check_circle, size: 16, color: blue),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    feature,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 15),
-          Text(
-            description,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[700],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
+          )).toList(),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget buildFeatureButton(IconData icon, String text) {
     return GestureDetector(

@@ -187,7 +187,7 @@ class _RegistrationTabState extends State<RegistrationTab> {
   Timer? _bannerTimer;
 
   final List<Map<String, dynamic>> _categories = [
-    {'name': 'Tất cả', 'image': 'assets/images/all.png', 'type': 'Tất cả'},
+    {'name': 'Tất cả', 'image': 'assets/images/swim.jpg', 'type': 'Tất cả'},
     {'name': 'Yoga', 'image': 'assets/images/yoga.jpeg', 'type': 'yoga'},
     {'name': 'Bơi', 'image': 'assets/images/swim.jpg', 'type': 'bơi'},
     {'name': 'Gym', 'image': 'assets/images/gym.jpg', 'type': 'gym'},

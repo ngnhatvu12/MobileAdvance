@@ -293,9 +293,9 @@ Widget _buildTabTitle(String title, int index) {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.message, color: Colors.blue),
-                  onPressed: () => _startChat(context, userId, customerData['name']),
-                ),
+                icon: const Icon(Icons.message, color: Colors.red),
+                onPressed: () => _startChat(context, userId, customerData['name']),
+              ),
               ],
             ),
             const SizedBox(height: 12),
@@ -322,50 +322,50 @@ Widget _buildTabTitle(String title, int index) {
       ),
     );
   }
-    void _startChat(BuildContext context, String studentId, String studentName) async {
-    // Lấy thông tin học viên từ Firestore
+  Future<void> _startChat(BuildContext context, String studentId, String studentName) async {
+  try {
+    // Lấy thông tin học viên
     final studentDoc = await _firestore.collection('users').doc(studentId).get();
     final studentData = studentDoc.data() as Map<String, dynamic>;
+    final customerId = studentData['customerId'];
     
+    if (customerId == null) {
+      throw Exception('Không tìm thấy customerId của học viên');
+    }
+
     // Lấy thông tin huấn luyện viên hiện tại
     final coach = _auth.currentUser!;
     final coachDoc = await _firestore.collection('users').doc(coach.uid).get();
     final coachData = coachDoc.data() as Map<String, dynamic>;
+    final coachId = coachData['coachId'];
     
-    // Tạo liên hệ trong collection của huấn luyện viên
-    await _firestore.collection('users')
-      .doc(coach.uid)
-      .collection('contacts')
-      .doc(studentId)
-      .set({
-        'name': studentName,
-        'imageUrl': studentData['imageUrl'] ?? 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
-        'lastMessage': '',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    await _firestore.collection('users')
-      .doc(studentId)
-      .collection('contacts')
-      .doc(coach.uid)
-      .set({
-        'name': coachData['name'] ?? 'Huấn luyện viên',
-        'imageUrl': coachData['imageUrl'] ?? 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
-        'lastMessage': '',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    
-    // Chuyển đến trang MessengerPage
+    if (coachId == null) {
+      throw Exception('Không tìm thấy coachId của huấn luyện viên');
+    }
+
+    // Chuyển đến trang chat
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CoachMessengerPage(
+          customerId: customerId,
+          coachId: coachId,
           studentId: studentId,
           studentName: studentName,
           studentImageUrl: studentData['imageUrl'] ?? 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
         ),
       ),
     );
+    
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Lỗi khi bắt đầu trò chuyện: ${e.toString()}'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
   Widget _buildStudentClasses(String userId) {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore.collection('class')
