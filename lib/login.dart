@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:do_an_lt/theme/colors.dart';
 import 'Customer/Home/customer_main.dart'; 
 import 'Coach/Dashboard/coach_main.dart';
@@ -16,15 +17,54 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool rememberMe = false;
-  bool acceptTerms = false;
+  bool acceptTerms = true; // Mặc định tích chọn
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  // Load thông tin đăng nhập đã lưu
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      rememberMe = prefs.getBool('rememberMe') ?? false;
+      if (rememberMe) {
+        _usernameController.text = prefs.getString('savedEmail') ?? '';
+        _passwordController.text = prefs.getString('savedPassword') ?? '';
+      }
+    });
+  }
+
+  // Lưu thông tin đăng nhập
+  Future<void> _saveCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (rememberMe) {
+      await prefs.setBool('rememberMe', true);
+      await prefs.setString('savedEmail', _usernameController.text);
+      await prefs.setString('savedPassword', _passwordController.text);
+    } else {
+      await prefs.setBool('rememberMe', false);
+      await prefs.remove('savedEmail');
+      await prefs.remove('savedPassword');
+    }
+  }
 
   Future<void> _login() async {
+    if (!acceptTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Vui lòng chấp nhận điều khoản dịch vụ")),
+      );
+      return;
+    }
+
     String email = _usernameController.text.trim();
     String password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Vui lòng nhập email và mật khẩu")),
+        const SnackBar(content: Text("Vui lòng nhập email và mật khẩu")),
       );
       return;
     }
@@ -35,6 +75,10 @@ class _LoginPageState extends State<LoginPage> {
         email: email,
         password: password,
       );
+      
+      // Lưu thông tin đăng nhập nếu được chọn
+      await _saveCredentials();
+
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
@@ -55,12 +99,12 @@ class _LoginPageState extends State<LoginPage> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Vai trò không hợp lệ")),
+            const SnackBar(content: Text("Vai trò không hợp lệ")),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Người dùng không tồn tại")),
+          const SnackBar(content: Text("Người dùng không tồn tại")),
         );
       }
     } on FirebaseAuthException catch (e) {
@@ -72,6 +116,59 @@ class _LoginPageState extends State<LoginPage> {
         SnackBar(content: Text("Lỗi: $e")),
       );
     }
+  }
+
+  // Hàm xử lý quên mật khẩu
+  Future<void> _resetPassword(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email đặt lại mật khẩu đã được gửi")),
+      );
+      Navigator.pop(context); // Đóng dialog quên mật khẩu
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Lỗi: ${e.message}")),
+      );
+    }
+  }
+
+  // Hiển thị dialog quên mật khẩu
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Quên mật khẩu"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Nhập email của bạn để nhận liên kết đặt lại mật khẩu"),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailController,
+                decoration: InputDecoration(
+                  labelText: "Email",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Hủy"),
+            ),
+            ElevatedButton(
+              onPressed: () => _resetPassword(emailController.text.trim()),
+              child: const Text("Gửi"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -131,7 +228,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       child: Column(
                         children: [
-                          SizedBox(height: 30), // Để dành chỗ cho chữ đăng nhập
+                          SizedBox(height: 30),
                           TextField(
                             controller: _usernameController,
                             style: TextStyle(color: Colors.white),
@@ -186,7 +283,7 @@ class _LoginPageState extends State<LoginPage> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {},
+                    onPressed: _showForgotPasswordDialog,
                     child: Text(
                       "Quên mật khẩu?",
                       style: TextStyle(color: Colors.white, fontSize: 18),
@@ -194,49 +291,49 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 Row(
-                children: [
-                  Checkbox(
-                    value: rememberMe,
-                    onChanged: (value) {
-                      setState(() {
-                        rememberMe = value!;
-                      });
-                    },
-                    activeColor: Colors.white,
-                    checkColor: Colors.red,
-                  ),
-                  Text("Ghi nhớ đăng nhập", style: TextStyle(color: Colors.white, fontSize: 18)),
-                ],
-              ),
-              Row(
-                children: [
-                  Checkbox(
-                    value: acceptTerms,
-                    onChanged: (value) {
-                      setState(() {
-                        acceptTerms = value!;
-                      });
-                    },
-                    activeColor: Colors.white,
-                    checkColor: Colors.red,
-                  ),
-                  Text("Chấp nhận điều khoản dịch vụ.", style: TextStyle(color: Colors.white, fontSize: 18)),
-                ],
-              ),
+                  children: [
+                    Checkbox(
+                      value: rememberMe,
+                      onChanged: (value) {
+                        setState(() {
+                          rememberMe = value!;
+                        });
+                      },
+                      activeColor: Colors.white,
+                      checkColor: Colors.red,
+                    ),
+                    Text("Ghi nhớ đăng nhập", style: TextStyle(color: Colors.white, fontSize: 18)),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: acceptTerms,
+                      onChanged: (value) {
+                        setState(() {
+                          acceptTerms = value!;
+                        });
+                      },
+                      activeColor: Colors.white,
+                      checkColor: Colors.red,
+                    ),
+                    Text("Chấp nhận điều khoản dịch vụ.", style: TextStyle(color: Colors.white, fontSize: 18)),
+                  ],
+                ),
                 SizedBox(height: 10),
 
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: _login,
+                    onPressed: acceptTerms ? _login : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      backgroundColor: acceptTerms ? Colors.white : Colors.grey,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: Text("Đăng nhập", style: TextStyle(color: Colors.red, fontSize: 18)),
+                    child: Text("Đăng nhập", style: TextStyle(color: acceptTerms ? Colors.red : Colors.white, fontSize: 18)),
                   ),
                 ),
 

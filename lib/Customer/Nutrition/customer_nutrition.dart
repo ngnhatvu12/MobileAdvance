@@ -1249,178 +1249,687 @@ void _showAddMealDialog(String mealType) {
  Widget _buildCommunityTab() {
   final contentController = TextEditingController();
   final imageUrlController = TextEditingController();
+  final currentUser = FirebaseAuth.instance.currentUser;
 
-  return SingleChildScrollView(
-    child: Column(
-      children: [
-        // Phần tạo bài viết
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
+  return Column(
+    children: [
+      // Phần tạo bài viết mới (Sticky ở trên cùng)
+      Material(
+        elevation: 4,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.white,
+          child: Column(
+            children: [
+              Row(
                 children: [
-                  TextField(
-                    controller: contentController,
-                    decoration: InputDecoration(
-                      labelText: 'Nội dung bài viết',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 5,
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundImage: currentUser?.photoURL != null
+                        ? NetworkImage(currentUser!.photoURL!)
+                        : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
                   ),
-                  SizedBox(height: 10),
-                  TextField(
-                    controller: imageUrlController,
-                    decoration: InputDecoration(
-                      labelText: 'URL hình ảnh',
-                      border: OutlineInputBorder(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: contentController,
+                      decoration: InputDecoration(
+                        hintText: 'Bạn đang nghĩ gì?',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                      ),
+                      maxLines: 3,
+                      minLines: 1,
                     ),
                   ),
-                  SizedBox(height: 10),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.image, color: Colors.green),
+                    onPressed: () {
+                      // Thêm chức năng chọn ảnh
+                    },
+                  ),
+                  const Text('Ảnh', style: TextStyle(color: Colors.grey)),
+                  const Spacer(),
                   ElevatedButton(
                     onPressed: () async {
-                      if (contentController.text.isNotEmpty) {
-                        // Lấy thông tin người dùng từ collection 'users'
+                      if (contentController.text.isNotEmpty && currentUser != null) {
                         final userDoc = await FirebaseFirestore.instance
                             .collection('users')
-                            .doc(userId)
+                            .doc(currentUser.uid)
                             .get();
 
                         if (userDoc.exists) {
                           final userData = userDoc.data() as Map<String, dynamic>;
                           final customerId = userData['customerId'];
 
-                          // Lưu bài viết vào collection 'communitys' với customerId
                           await FirebaseFirestore.instance.collection('communitys').add({
                             'content': contentController.text,
-                            'imageUrl': imageUrlController.text,
-                            'date': DateFormat('dd/MM/yyyy').format(DateTime.now()),
-                            'customerId': customerId, // Lưu customerId thay vì userId
+                            'imageUrl': imageUrlController.text.isNotEmpty 
+                                ? imageUrlController.text 
+                                : null,
+                            'date': DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
+                            'timestamp': FieldValue.serverTimestamp(),
+                            'customerId': customerId,
+                            'likes': [],
+                            'comments': [],
                           });
+                          
                           contentController.clear();
                           imageUrlController.clear();
                         }
                       }
                     },
-                    child: Text('Đăng bài'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                    ),
+                    child: const Text('Đăng'),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
         ),
-        // Tiêu đề "Tất cả bài viết"
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Tất cả bài viết',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
-        // Phần hiển thị bài viết
-        StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('communitys').snapshots(),
+      ),
+      
+      // Danh sách bài viết
+      Expanded(
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('communitys')
+              .orderBy('timestamp', descending: true)
+              .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator());
             }
+            
             if (snapshot.hasError) {
-              return Center(child: Text('Đã xảy ra lỗi: ${snapshot.error}'));
+              return Center(child: Text('Lỗi: ${snapshot.error}'));
             }
+            
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Center(child: Text('Chưa có bài viết nào.'));
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.forum, size: 60, color: Colors.grey[300]),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Chưa có bài viết nào',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Hãy là người đầu tiên chia sẻ!',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                  ],
+                ),
+              );
             }
 
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
+            return ListView.separated(
+              padding: const EdgeInsets.only(top: 8),
               itemCount: snapshot.data!.docs.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final post = snapshot.data!.docs[index];
                 final data = post.data() as Map<String, dynamic>;
-
-                return FutureBuilder<DocumentSnapshot>(
-                  future: FirebaseFirestore.instance
-                      .collection('customers')
-                      .doc(data['customerId'])
-                      .get(),
-                  builder: (context, userSnapshot) {
-                    if (userSnapshot.connectionState == ConnectionState.waiting) {
-                      return Center(child: CircularProgressIndicator());
-                    }
-                    if (userSnapshot.hasError) {
-                      return Center(child: Text('Lỗi khi tải thông tin người dùng'));
-                    }
-                    if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
-                      return Center(child: Text('Người dùng không tồn tại'));
-                    }
-
-                    final userData = userSnapshot.data!.data() as Map<String, dynamic>;
-
-                    return Card(
-                      margin: EdgeInsets.all(10),
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ListTile(
-                            leading: CircleAvatar(
-                              backgroundImage: NetworkImage(userData['imageUrl']),
-                            ),
-                            title: Text(userData['name']),
-                            subtitle: Text(data['date']),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                            child: Text(data['content']),
-                          ),
-                          if (data['imageUrl'] != null && data['imageUrl'].isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.network(data['imageUrl']),
-                              ),
-                            ),
-                          ButtonBar(
-                            alignment: MainAxisAlignment.start,
-                            children: [
-                              IconButton(
-                                icon: Icon(Icons.thumb_up),
-                                onPressed: () {
-                                  // Xử lý thích bài viết
-                                },
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.comment),
-                                onPressed: () {
-                                  // Xử lý bình luận
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
+                
+                return _buildPostCard(post.id, data);
               },
             );
           },
         ),
-      ],
-    ),
+      ),
+    ],
+  );
+}
+
+Widget _buildPostCard(String postId, Map<String, dynamic> data) {
+  return FutureBuilder<DocumentSnapshot>(
+    future: FirebaseFirestore.instance
+        .collection('customers')
+        .doc(data['customerId'])
+        .get(),
+    builder: (context, userSnapshot) {
+      if (userSnapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      
+      if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
+        return const SizedBox();
+      }
+
+      final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      final likes = List<String>.from(data['likes'] ?? []);
+      final isLiked = currentUserId != null && likes.contains(currentUserId);
+      final comments = List<Map<String, dynamic>>.from(data['comments'] ?? []);
+
+      return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header bài viết
+            ListTile(
+              contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              leading: CircleAvatar(
+                radius: 24,
+                backgroundImage: NetworkImage(
+                  userData['imageUrl'] ?? 'https://via.placeholder.com/150'
+                ),
+              ),
+              title: Text(
+                userData['name'] ?? 'Người dùng',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              subtitle: Text(
+                data['date'] ?? '',
+                style: TextStyle(
+                  color: Colors.grey[600], 
+                  fontSize: 12,
+                ),
+              ),
+              trailing: currentUserId == userData['userId']
+                  ? PopupMenuButton(
+                      icon: const Icon(Icons.more_vert, size: 20),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Xóa bài viết'),
+                        ),
+                      ],
+                      onSelected: (value) {
+                        if (value == 'delete') {
+                          _confirmDeletePost(postId);
+                        }
+                      },
+                    )
+                  : null,
+            ),
+            
+            // Nội dung bài viết
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Text(
+                data['content'] ?? '',
+                style: const TextStyle(fontSize: 15),
+              ),
+            ),
+            
+            // Hình ảnh (nếu có)
+            if (data['imageUrl'] != null && data['imageUrl'].toString().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    data['imageUrl'].toString(),
+                    width: double.infinity,
+                    height: 250,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 250,
+                        color: Colors.grey[200],
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.broken_image, 
+                                size: 50, 
+                                color: Colors.grey),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Không thể tải hình ảnh',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        height: 250,
+                        color: Colors.grey[200],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            
+            // Thống kê like và comment
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  if (likes.isNotEmpty)
+                    Row(
+                      children: [
+                        const Icon(Icons.thumb_up, size: 16, color: Colors.blue),
+                        const SizedBox(width: 4),
+                        Text(
+                          likes.length.toString(),
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  const Spacer(),
+                  if (comments.isNotEmpty)
+                    Text(
+                      '${comments.length} bình luận',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                ],
+              ),
+            ),
+            
+            // Divider
+            const Divider(height: 1, thickness: 0.5),
+            
+            // Nút hành động
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton.icon(
+                      icon: Icon(
+                        isLiked ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
+                        color: isLiked ? Colors.blue : Colors.grey[600],
+                        size: 20,
+                      ),
+                      label: Text(
+                        'Thích',
+                        style: TextStyle(
+                          color: isLiked ? Colors.blue : Colors.grey[600],
+                        ),
+                      ),
+                      onPressed: () {
+                        _toggleLike(postId, currentUserId ?? '');
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextButton.icon(
+                      icon: const Icon(
+                        Icons.comment_outlined, 
+                        color: Colors.grey,
+                        size: 20,
+                      ),
+                      label: const Text(
+                        'Bình luận', 
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      onPressed: () {
+                        _showCommentsDialog(postId, data['content'] ?? '');
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+void _confirmDeletePost(String postId) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Xác nhận xóa'),
+        content: const Text('Bạn có chắc chắn muốn xóa bài viết này?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await FirebaseFirestore.instance
+                  .collection('communitys')
+                  .doc(postId)
+                  .delete();
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã xóa bài viết')),
+              );
+            },
+            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Future<void> _toggleLike(String postId, String userId) async {
+  if (userId.isEmpty) return;
+
+  final postRef = FirebaseFirestore.instance.collection('communitys').doc(postId);
+  final post = await postRef.get();
+
+  if (post.exists) {
+    final likes = List<String>.from(post['likes'] ?? []);
+    
+    if (likes.contains(userId)) {
+      await postRef.update({
+        'likes': FieldValue.arrayRemove([userId])
+      });
+    } else {
+      await postRef.update({
+        'likes': FieldValue.arrayUnion([userId])
+      });
+    }
+  }
+}
+
+void _showCommentsDialog(String postId, String postContent) {
+  final commentController = TextEditingController();
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey[200]!,
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Text(
+                    'Bình luận',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Nội dung bài viết gốc
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey[200]!,
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.format_quote, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      postContent,
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Danh sách bình luận
+            Expanded(
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('communitys')
+                    .doc(postId)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  final comments = List<Map<String, dynamic>>.from(
+                    snapshot.data!['comments'] ?? []
+                  );
+                  
+                  if (comments.isEmpty) {
+                    return const Center(
+                      child: Text('Chưa có bình luận nào'),
+                    );
+                  }
+                  
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(0),
+                    itemCount: comments.length,
+                    itemBuilder: (context, index) {
+                      final comment = comments[index];
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('customers')
+                            .doc(comment['customerId'])
+                            .get(),
+                        builder: (context, userSnapshot) {
+                          if (!userSnapshot.hasData) {
+                            return const SizedBox();
+                          }
+                          
+                          final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                          
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Colors.grey[200]!,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundImage: NetworkImage(
+                                    userData['imageUrl'] ?? 'https://via.placeholder.com/150'
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        userData['name'] ?? 'Người dùng',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(comment['text'] ?? ''),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        comment['date'] ?? '',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            
+            // Ô nhập bình luận
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: commentController,
+                      decoration: InputDecoration(
+                        hintText: 'Viết bình luận...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  CircleAvatar(
+                    backgroundColor: Colors.blue,
+                    child: IconButton(
+                      icon: const Icon(Icons.send, color: Colors.white),
+                      onPressed: () async {
+                        if (commentController.text.isNotEmpty) {
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (user != null) {
+                            final userDoc = await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .get();
+                            
+                            if (userDoc.exists) {
+                              final userData = userDoc.data() as Map<String, dynamic>;
+                              final customerId = userData['customerId'];
+                              
+                              final newComment = {
+                                'customerId': customerId,
+                                'text': commentController.text,
+                                'date': DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
+                              };
+                              
+                              await FirebaseFirestore.instance
+                                  .collection('communitys')
+                                  .doc(postId)
+                                  .update({
+                                    'comments': FieldValue.arrayUnion([newComment])
+                                  });
+                              
+                              commentController.clear();
+                            }
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    },
   );
 }
 

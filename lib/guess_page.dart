@@ -3,6 +3,7 @@ import 'package:do_an_lt/Customer/Home/news_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:do_an_lt/theme/colors.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:intl/intl.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class GuessPage extends StatefulWidget {
@@ -685,7 +686,7 @@ class ClassListPage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${data['price']} USD',
+                      '${NumberFormat.currency(locale: 'vi_VN', symbol: '₫', decimalDigits: 0).format(int.parse(data['price']))}',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,

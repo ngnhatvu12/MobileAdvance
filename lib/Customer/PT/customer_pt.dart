@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:do_an_lt/Customer/PT/contact_pt.dart';
+import 'package:do_an_lt/Customer/PT/hired_coach_detail.dart';
 import 'package:do_an_lt/Customer/PT/pt_detail.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +12,7 @@ class PTPage extends StatefulWidget {
 }
 
 class _PTPageState extends State<PTPage> {
-  int _selectedIndex = 1; // Mặc định vào tab "Đăng ký PT"
+  int _selectedIndex = 1; 
   String _searchQuery = '';
   String _selectedCategory = 'Tất cả';
 
@@ -168,7 +169,9 @@ class _PTPageState extends State<PTPage> {
                       imageUrl: coachData['imageUrl'],
                       name: coachData['name'],
                       daysRemaining: daysRemaining,
-                      contactId: contactId, // Truyền documentId của liên hệ
+                      contactId: contactId,
+                      coachData: coachData,
+                      context: context,
                     );
                   },
                 );
@@ -220,69 +223,83 @@ class _PTPageState extends State<PTPage> {
   required String imageUrl,
   required String name,
   required int daysRemaining,
-  required String contactId
+  required String contactId,
+  required Map<String, dynamic> coachData,
+  required BuildContext context,
 }) {
-  return Card(
-    elevation: 4, // Độ đổ bóng
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(15), // Bo góc
-    ),
-    margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10), // Khoảng cách giữa các item
-    child: Padding(
-      padding: const EdgeInsets.all(12), // Khoảng cách bên trong
-      child: Row(
-        children: [
-          // Avatar
-          CircleAvatar(
-            backgroundImage: NetworkImage(imageUrl),
-            radius: 30, // Kích thước avatar
+  return InkWell(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HiredCoachDetailPage(
+            coachData: coachData,
+            contactId: contactId,
           ),
-          const SizedBox(width: 16), // Khoảng cách giữa avatar và text
-          // Thông tin
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4), // Khoảng cách giữa tên và ngày
-                Text(
-                  'Kết thúc trong $daysRemaining ngày',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
+        ),
+      );
+    },
+    borderRadius: BorderRadius.circular(15),
+    child: Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundImage: NetworkImage(imageUrl),
+              radius: 30,
             ),
-          ),
-          // Nút tin nhắn
-          IconButton(
-            icon: const Icon(Icons.message, color: blue), // Màu icon
-           onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MessengerPage(
-                    contactId: contactId,
-                    coachId: 'coachId', // Thay bằng ID của huấn luyện viên
-                    coachName: name,
-                    coachImageUrl: imageUrl,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
-        ],
+                  const SizedBox(height: 4),
+                  Text(
+                    'Kết thúc trong $daysRemaining ngày',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.message, color: blue),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MessengerPage(
+                      contactId: contactId,
+                      coachId: 'coachId', // Thay bằng ID thực tế nếu cần
+                      coachName: name,
+                      coachImageUrl: imageUrl,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     ),
   );
 }
+
   Widget _buildSearchBar() {
     return TextField(
       decoration: InputDecoration(
@@ -334,6 +351,11 @@ class _PTPageState extends State<PTPage> {
   }
 
   Widget _buildCoachGrid() {
+  final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  if (currentUserId == null) {
+    return const Center(child: Text('Vui lòng đăng nhập để xem huấn luyện viên'));
+  }
+
   return StreamBuilder<QuerySnapshot>(
     stream: FirebaseFirestore.instance.collection('coachs').snapshots(),
     builder: (context, snapshot) {
@@ -346,25 +368,45 @@ class _PTPageState extends State<PTPage> {
       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
         return const Center(child: Text('Không có huấn luyện viên nào.'));
       }
+      return FutureBuilder<QuerySnapshot>(
+        future: FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .collection('contacts')
+            .get(),
+        builder: (context, contactsSnapshot) {
+          if (contactsSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final registeredCoachIds = contactsSnapshot.data?.docs
+                  .map((doc) => doc['coachId'] as String?)
+                  .where((id) => id != null)
+                  .toList() ??
+              [];
+          final filteredCoaches = snapshot.data!.docs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final name = data['name'].toString().toLowerCase();
+            final specializations = List<String>.from(data['specializations'] ?? []);
+            final matchesCategory = _selectedCategory == 'Tất cả' || specializations.contains(_selectedCategory);
+            final isRegistered = registeredCoachIds.contains(doc.id);
+            
+            return name.contains(_searchQuery.toLowerCase()) && 
+                   matchesCategory && 
+                   !isRegistered;
+          }).toList();
 
-      final filteredCoaches = snapshot.data!.docs.where((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        final name = data['name'].toString().toLowerCase();
-        final specializations = List<String>.from(data['specializations'] ?? []);
-        final matchesCategory = _selectedCategory == 'Tất cả' || specializations.contains(_selectedCategory);
-        return name.contains(_searchQuery.toLowerCase()) && matchesCategory;
-      }).toList();
+          if (filteredCoaches.isEmpty) {
+            return const Center(child: Text('Không tìm thấy huấn luyện viên phù hợp.'));
+          }
 
-      if (filteredCoaches.isEmpty) {
-        return const Center(child: Text('Không tìm thấy huấn luyện viên.'));
-      }
-
-      return ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        itemCount: filteredCoaches.length,
-        itemBuilder: (context, index) {
-          final data = filteredCoaches[index].data() as Map<String, dynamic>;
-          return _buildCoachCard(data);
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            itemCount: filteredCoaches.length,
+            itemBuilder: (context, index) {
+              final data = filteredCoaches[index].data() as Map<String, dynamic>;
+              return _buildCoachCard(data);
+            },
+          );
         },
       );
     },
